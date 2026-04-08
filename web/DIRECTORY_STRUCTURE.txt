@@ -1,0 +1,138 @@
+stellar-predict/web/
+│
+├── Configuration Files
+│   ├── package.json                    # NPM dependencies and scripts
+│   ├── tsconfig.json                   # TypeScript configuration
+│   ├── next.config.js                  # Next.js build configuration
+│   ├── tailwind.config.ts              # Tailwind CSS customization
+│   ├── postcss.config.js               # PostCSS plugins configuration
+│   ├── .env.example                    # Environment variable template
+│   └── .gitignore                      # Git ignore rules
+│
+├── Documentation
+│   ├── README.md                       # Installation & usage guide
+│   ├── PROJECT_SUMMARY.md              # High-level project overview
+│   ├── FEATURES.md                     # Complete feature reference
+│   ├── FILES_CREATED.txt               # List of all created files
+│   └── DIRECTORY_STRUCTURE.txt         # This file
+│
+└── src/
+    │
+    ├── app/                            # Next.js App Router
+    │   ├── layout.tsx                  # Root layout with navbar, footer
+    │   ├── globals.css                 # Global styles, theme variables
+    │   ├── page.tsx                    # Home / Market browser page
+    │   │
+    │   ├── markets/
+    │   │   └── [id]/
+    │   │       └── page.tsx            # Market detail & trading page
+    │   │
+    │   └── portfolio/
+    │       └── page.tsx                # Portfolio & positions page
+    │
+    ├── components/                     # Reusable React components
+    │   ├── Navbar.tsx                  # Top navigation with menu
+    │   ├── WalletButton.tsx            # Freighter wallet connect
+    │   ├── MarketCard.tsx              # Market preview card
+    │   ├── OrderEntry.tsx              # Buy/sell order form
+    │   ├── OrderBook.tsx               # Bid/ask display
+    │   ├── PriceChart.tsx              # Price history chart
+    │   ├── TradeHistory.tsx            # Recent trades table
+    │   └── PositionCard.tsx            # Position tracker card
+    │
+    ├── hooks/                          # Custom React hooks
+    │   ├── useWallet.ts                # Freighter wallet hook
+    │   ├── useMarket.ts                # Market data SWR hook
+    │   └── useOrderBook.ts             # Real-time order book hook
+    │
+    └── lib/                            # Utilities & services
+        ├── api.ts                      # REST API client
+        ├── websocket.ts                # WebSocket client
+        └── stellar.ts                  # Stellar SDK utilities
+
+
+FILE STATISTICS:
+===============
+
+Total Files: 33
+  - Configuration: 7
+  - Documentation: 5
+  - Page Components: 5
+  - Reusable Components: 8
+  - Custom Hooks: 3
+  - Utility Services: 3
+
+Lines of Code: 1,752
+  - TypeScript/TSX: ~1,600
+  - CSS: ~150
+  - Configuration: ~2
+
+Directory Depth: 4 levels
+  - Web root
+  - src/
+  - app/, components/, hooks/, lib/
+  - Nested routes
+
+
+QUICK NAVIGATION:
+=================
+
+Landing/Home:           src/app/page.tsx
+Market Details:         src/app/markets/[id]/page.tsx
+Portfolio:             src/app/portfolio/page.tsx
+Styles & Theme:        src/app/globals.css
+API Integration:       src/lib/api.ts
+Real-time Updates:     src/lib/websocket.ts
+Blockchain Utils:      src/lib/stellar.ts
+Wallet Connect:        src/hooks/useWallet.ts
+
+
+COMPONENT DEPENDENCY TREE:
+==========================
+
+App Layout
+├── Navbar
+│   └── WalletButton
+├── Page Routes
+│   ├── / (Home)
+│   │   └── MarketCard (grid)
+│   ├── /markets/[id]
+│   │   ├── OrderEntry
+│   │   ├── OrderBook (useOrderBook)
+│   │   ├── PriceChart
+│   │   └── TradeHistory
+│   └── /portfolio
+│       ├── PositionCard (grid)
+│       └── Tabs with tables
+└── Footer
+
+
+DATA FLOW:
+==========
+
+User Action → Component → Hook (useMarket/useOrderBook) → API Client
+                          ↓
+                      REST API / WebSocket
+                          ↓
+                      Backend Server
+                          ↓
+                      Database
+                          ↓
+                      Response → Hook Cache (SWR) → Component Re-render
+
+
+BUILD OUTPUT:
+=============
+
+npm run build
+
+Output: .next/
+- Optimized JavaScript bundles
+- Static HTML pages
+- Image assets
+- CSS extraction
+
+npm start
+- Runs production Next.js server
+- Listens on port 3000 (default)
+- Serves cached static assets

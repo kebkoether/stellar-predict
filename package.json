@@ -1,0 +1,16 @@
+{
+  "name": "stellar-predict",
+  "version": "1.0.0",
+  "description": "Stellar-based prediction market platform with off-chain CLOB and on-chain settlement",
+  "private": true,
+  "scripts": {
+    "dev:server": "cd server && npx ts-node src/index.ts",
+    "dev:web": "cd web && npm run dev",
+    "build:server": "cd server && npx tsc",
+    "build:web": "cd web && npm run build",
+    "test:server": "cd server && npm test"
+  },
+  "keywords": ["stellar", "prediction-markets", "clob"],
+  "author": "",
+  "license": "MIT"
+}

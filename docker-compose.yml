@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  stellar-foresure:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3000/api
+    ports:
+      - "3000:3000"   # API server
+      - "3001:3001"   # WebSocket
+      - "3002:3002"   # Next.js frontend
+    environment:
+      - NODE_ENV=production
+      - SERVER_PORT=3000
+      - WS_PORT=3001
+      - DB_PATH=./data.db
+      - STELLAR_NETWORK=testnet
+      - STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
+      - SETTLEMENT_KEYPAIR=${SETTLEMENT_KEYPAIR:-}
+      - USDC_ASSET_CODE=USDC
+      - USDC_ISSUER=GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+    volumes:
+      - stellar-data:/app/server/data
+    restart: unless-stopped
+
+volumes:
+  stellar-data:
