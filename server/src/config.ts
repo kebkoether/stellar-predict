@@ -9,7 +9,7 @@ dotenv.config();
 export const config = {
   // Server
   server: {
-    port: parseInt(process.env.PORT || process.env.SERVER_PORT || '3000'),
+    port: parseInt(process.env.SERVER_PORT || process.env.PORT || '3000'),
     wsPort: parseInt(process.env.WS_PORT || '3001'),
     env: (process.env.NODE_ENV || 'development') as 'development' | 'production',
   },

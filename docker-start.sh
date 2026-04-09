@@ -3,7 +3,7 @@ set -e
 
 echo "Starting Stellar Foresure..."
 
-# Backend API on internal port 3000
+# Backend API on fixed internal port 3000 (NOT Railway's PORT)
 cd /app/server
 echo "Starting API server on port 3000..."
 SERVER_PORT=3000 NODE_ENV=production node dist/index.js &
