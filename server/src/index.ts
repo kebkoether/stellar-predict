@@ -1,11 +1,50 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import { v4 as uuidv4 } from 'uuid';
 import { config, validateConfig } from './config';
 import { Database } from './db/database';
 import { MatchingEngine } from './engine/matching';
 import { createRouter } from './api/routes';
 import { MarketWebSocketServer } from './api/websocket';
 import { SettlementPipeline } from './settlement/settler';
+
+const DEFAULT_MARKETS = [
+  { question: 'Will BTC exceed $200k by end of 2026?', description: 'Resolves YES if Bitcoin reaches $200,000 USD on any major exchange before January 1, 2027.', resolutionTime: '2026-12-31T00:00:00Z' },
+  { question: 'Will ETH flip BTC in market cap by 2027?', description: 'Resolves YES if Ethereum market cap exceeds Bitcoin at any point before January 1, 2027.', resolutionTime: '2027-01-01T00:00:00Z' },
+  { question: 'Will the US pass a stablecoin regulation bill in 2026?', description: 'Resolves YES if Congress passes and the President signs a stablecoin bill during 2026.', resolutionTime: '2026-12-31T00:00:00Z' },
+  { question: 'Will Stellar (XLM) reach $1.00 in 2026?', description: 'Resolves YES if XLM/USD reaches $1.00 on CoinGecko during 2026.', resolutionTime: '2026-12-31T00:00:00Z' },
+  { question: 'Will OpenAI release GPT-5 before July 2026?', description: 'Resolves YES if OpenAI publicly releases GPT-5 (GA, not preview) before July 1, 2026.', resolutionTime: '2026-07-01T00:00:00Z' },
+  { question: 'Will a spot Solana ETF be approved in the US in 2026?', description: 'Resolves YES if the SEC approves at least one spot Solana ETF during 2026.', resolutionTime: '2026-12-31T00:00:00Z' },
+  { question: 'Will global crypto market cap exceed $10 trillion in 2026?', description: 'Resolves YES if total crypto market cap (CoinGecko) exceeds $10T during 2026.', resolutionTime: '2026-12-31T00:00:00Z' },
+  { question: 'Will there be a major CEX collapse (top 20) in 2026?', description: 'Resolves YES if a top-20 exchange halts withdrawals >7 days or files bankruptcy in 2026.', resolutionTime: '2026-12-31T00:00:00Z' },
+];
+
+async function seedMarketsIfEmpty(db: Database): Promise<void> {
+  const existing = db.getAllMarkets();
+  if (existing.length > 0) {
+    console.log(`Database has ${existing.length} markets — skipping seed`);
+    return;
+  }
+
+  console.log('Empty database detected — seeding default markets...');
+  for (const m of DEFAULT_MARKETS) {
+    db.createMarket({
+      id: uuidv4(),
+      question: m.question,
+      description: m.description,
+      outcomes: ['Yes', 'No'],
+      status: 'open',
+      collateralToken: {
+        code: config.usdc.code,
+        issuer: config.usdc.issuer,
+      },
+      createdAt: new Date(),
+      resolutionTime: new Date(m.resolutionTime),
+      createdBy: 'admin',
+    });
+  }
+  console.log(`Seeded ${DEFAULT_MARKETS.length} markets`);
+}
 
 let app: Express;
 let db: Database;
@@ -31,6 +70,9 @@ async function initialize(): Promise<void> {
 
   // Initialize matching engine
   matching = new MatchingEngine(db);
+
+  // Auto-seed markets if database is empty (fresh deploy)
+  await seedMarketsIfEmpty(db);
 
   // Initialize settlement pipeline
   if (config.stellar.settlementKeypair) {
