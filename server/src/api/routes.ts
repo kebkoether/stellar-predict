@@ -149,6 +149,16 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
 
       const result = matching.submitOrder(order);
 
+      // Return 400 if the order was rejected (e.g., insufficient balance)
+      if (result.status === 'rejected') {
+        res.status(400).json({
+          error: result.message || 'Order rejected',
+          order: result.order,
+          status: result.status,
+        });
+        return;
+      }
+
       res.status(201).json({
         order: result.order,
         trades: result.trades,
