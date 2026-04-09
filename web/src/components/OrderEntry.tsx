@@ -48,8 +48,8 @@ export default function OrderEntry({
       return
     }
 
-    if (balance && balance.available < estimatedCost) {
-      setError(`Insufficient balance. You need $${estimatedCost.toFixed(2)} but only have $${balance.available.toFixed(2)}`)
+    if (!balance || balance.available < estimatedCost) {
+      setError(`Insufficient balance. You need $${estimatedCost.toFixed(2)} but only have $${(balance?.available ?? 0).toFixed(2)}. Deposit USDC first.`)
       return
     }
 
@@ -221,7 +221,7 @@ export default function OrderEntry({
         <form onSubmit={handleSubmit}>
           <button
             type="submit"
-            disabled={loading || (!!balance && balance.available < estimatedCost)}
+            disabled={loading || !balance || balance.available < estimatedCost}
             className={`w-full py-3 px-4 rounded-lg text-lg font-bold transition ${
               selectedOutcome === 'yes'
                 ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -230,9 +230,11 @@ export default function OrderEntry({
           >
             {loading
               ? 'Processing...'
-              : balance && balance.available < estimatedCost
-                ? `Insufficient funds ($${balance.available.toFixed(2)} available)`
-                : `Buy ${outcomeName} at ${price}¢`}
+              : !balance
+                ? 'Loading balance...'
+                : balance.available < estimatedCost
+                  ? `Insufficient funds ($${balance.available.toFixed(2)} available)`
+                  : `Buy ${outcomeName} at ${price}¢`}
           </button>
         </form>
       )}
