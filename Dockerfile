@@ -15,8 +15,12 @@ COPY web/package*.json ./
 RUN npm ci
 COPY web/ .
 
-# The API URL is set at build time for Next.js static optimization
-ARG NEXT_PUBLIC_API_URL=http://localhost:3000/api
+# Ensure public directory exists (Next.js expects it)
+RUN mkdir -p public
+
+# The API URL is set at build time for Next.js
+# For single-container deploy, API is at the same origin
+ARG NEXT_PUBLIC_API_URL=/api
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 RUN npm run build
@@ -40,13 +44,14 @@ COPY --from=web-build /app/web/public ./web/public
 COPY --from=web-build /app/web/node_modules ./web/node_modules
 COPY --from=web-build /app/web/package.json ./web/
 
-# Copy env template
-COPY server/.env.example ./server/.env
-
-# Start script
+# Copy reverse proxy and start script
+COPY proxy.js ./
 COPY docker-start.sh ./
 RUN chmod +x docker-start.sh
 
-EXPOSE 3000 3001 3002
+# Copy env template
+COPY server/.env.example ./server/.env
+
+EXPOSE 8080
 
 CMD ["./docker-start.sh"]
