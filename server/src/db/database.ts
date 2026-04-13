@@ -144,6 +144,28 @@ export class DatabaseClient {
       )
     `);
 
+    // Track every on-chain deposit tx hash we've credited, to prevent replay
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS processed_deposits (
+        tx_hash TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        amount REAL NOT NULL,
+        processed_at TEXT NOT NULL
+      )
+    `);
+
+    // Track every withdrawal request for audit + idempotency
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS withdrawals (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        amount REAL NOT NULL,
+        tx_hash TEXT,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    `);
+
     this.db.run(`
       CREATE TABLE IF NOT EXISTS settlements (
         id TEXT PRIMARY KEY,
@@ -669,6 +691,80 @@ export class DatabaseClient {
   /**
    * Utility methods
    */
+
+  /**
+   * Deposit replay protection
+   */
+  public isDepositProcessed(txHash: string): boolean {
+    return this.getOne('SELECT tx_hash FROM processed_deposits WHERE tx_hash = ?', [txHash]) !== null;
+  }
+
+  public recordProcessedDeposit(txHash: string, userId: string, amount: number): void {
+    this.run(
+      'INSERT OR IGNORE INTO processed_deposits (tx_hash, user_id, amount, processed_at) VALUES (?, ?, ?, ?)',
+      [txHash, userId, amount, new Date().toISOString()]
+    );
+  }
+
+  /**
+   * Withdrawal audit log
+   */
+  public recordWithdrawal(id: string, userId: string, amount: number, status: string, txHash?: string): void {
+    this.run(
+      'INSERT OR REPLACE INTO withdrawals (id, user_id, amount, tx_hash, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, userId, amount, txHash || null, status, new Date().toISOString()]
+    );
+  }
+
+  public getRecentWithdrawals(limit: number = 50): any[] {
+    return this.getAll('SELECT * FROM withdrawals ORDER BY created_at DESC LIMIT ?', [limit]);
+  }
+
+  public getRecentDeposits(limit: number = 50): any[] {
+    return this.getAll('SELECT * FROM processed_deposits ORDER BY processed_at DESC LIMIT ?', [limit]);
+  }
+
+  /**
+   * Accounting invariants — returns internal totals for solvency check
+   */
+  public getAccountingTotals(): {
+    totalAvailable: number;
+    totalLocked: number;
+    totalActivePositionCost: number;
+    totalLiabilities: number;
+    userCount: number;
+    marketCount: number;
+    openMarkets: number;
+  } {
+    const balances = this.getAll('SELECT * FROM balances');
+    const totalAvailable = balances.reduce((s: number, b: any) => s + (b.available || 0), 0);
+    const totalLocked = balances.reduce((s: number, b: any) => s + (b.locked || 0), 0);
+
+    // Collateral still locked in open markets = sum of costBasis on live positions
+    const activePositions = this.getAll(
+      `SELECT p.cost_basis, p.quantity FROM positions p
+       JOIN markets m ON p.market_id = m.id
+       WHERE m.status = 'open' AND p.quantity > 0`
+    );
+    const totalActivePositionCost = activePositions.reduce(
+      (s: number, p: any) => s + (p.cost_basis || 0), 0
+    );
+
+    const totalLiabilities = totalAvailable + totalLocked + totalActivePositionCost;
+
+    const marketCountRow = this.getOne('SELECT COUNT(*) as c FROM markets');
+    const openMarketsRow = this.getOne("SELECT COUNT(*) as c FROM markets WHERE status = 'open'");
+
+    return {
+      totalAvailable,
+      totalLocked,
+      totalActivePositionCost,
+      totalLiabilities,
+      userCount: balances.length,
+      marketCount: marketCountRow?.c || 0,
+      openMarkets: openMarketsRow?.c || 0,
+    };
+  }
 
   public close(): void {
     this.saveToDisk();

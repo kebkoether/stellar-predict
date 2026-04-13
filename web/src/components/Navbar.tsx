@@ -13,8 +13,19 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo/Brand */}
-          <Link href="/" className="text-xl font-bold text-white hover:text-slate-100 transition">
-            Stellar Foresure
+          <Link href="/" className="text-xl font-bold text-white hover:text-slate-100 transition flex items-center gap-2">
+            <svg width="24" height="24" viewBox="0 0 256 256" className="flex-shrink-0">
+              <defs>
+                <linearGradient id="navGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#6366F1"/>
+                  <stop offset="50%" stopColor="#8B5CF6"/>
+                  <stop offset="100%" stopColor="#EC4899"/>
+                </linearGradient>
+              </defs>
+              <rect width="256" height="256" rx="48" fill="#1E1B4B"/>
+              <path d="M128 56 L142 104 L192 104 L152 132 L168 180 L128 150 L88 180 L104 132 L64 104 L114 104 Z" fill="url(#navGrad)"/>
+            </svg>
+            <span>Stellar <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Hedge</span></span>
           </Link>
 
           {/* Desktop Navigation */}

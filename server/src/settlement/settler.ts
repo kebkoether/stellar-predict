@@ -3,6 +3,9 @@ import { Trade, Settlement } from '../types';
 import { Database } from '../db/database';
 import { v4 as uuidv4 } from 'uuid';
 
+// Hard cap per withdrawal (defense in depth)
+const MAX_WITHDRAWAL_USD = 10000;
+
 const { Keypair, TransactionBuilder, Networks, Operation, Asset, BASE_FEE, Horizon } = StellarSdk;
 
 /**
@@ -104,6 +107,9 @@ export class SettlementPipeline {
     if (amount <= 0) {
       throw new Error('Withdrawal amount must be positive');
     }
+    if (amount > MAX_WITHDRAWAL_USD) {
+      throw new Error(`Withdrawal exceeds max per-tx cap of ${MAX_WITHDRAWAL_USD} USDC`);
+    }
 
     // Check internal balance
     const balance = this.db.getUserBalance(userId);
@@ -111,7 +117,15 @@ export class SettlementPipeline {
       throw new Error(`Insufficient balance. Available: ${balance?.available ?? 0}, Requested: ${amount}`);
     }
 
-    console.log(`Processing withdrawal: ${userId} → ${userAddr.slice(0, 12)}... for ${amount} USDC`);
+    const withdrawalId = uuidv4();
+    this.db.recordWithdrawal(withdrawalId, userId, amount, 'pending');
+
+    // DEDUCT BALANCE FIRST (before on-chain submit) to prevent double-spend via concurrent requests
+    this.db.updateUserBalance(userId, {
+      available: balance.available - amount,
+    });
+
+    console.log(`Processing withdrawal ${withdrawalId.slice(0,8)}: ${userId} → ${userAddr.slice(0, 12)}... for ${amount} USDC`);
 
     const account = await this.server.loadAccount(this.keypair.publicKey());
     const networkPassphrase = this.network === 'testnet' ? Networks.TESTNET : Networks.PUBLIC;
@@ -138,14 +152,18 @@ export class SettlementPipeline {
       const result = await this.server.submitTransaction(tx);
       const hash = (result as any).hash;
 
-      // Deduct from internal balance
-      this.db.updateUserBalance(userId, {
-        available: balance.available - amount,
-      });
+      this.db.recordWithdrawal(withdrawalId, userId, amount, 'confirmed', hash);
 
-      console.log(`  ✓ Withdrawal confirmed: ${hash}`);
+      console.log(`  ✓ Withdrawal ${withdrawalId.slice(0,8)} confirmed: ${hash}`);
       return hash;
     } catch (err: any) {
+      // Refund internal balance since on-chain submit failed
+      const current = this.db.getUserBalance(userId);
+      if (current) {
+        this.db.updateUserBalance(userId, { available: current.available + amount });
+      }
+      this.db.recordWithdrawal(withdrawalId, userId, amount, 'failed');
+
       const resultCodes = err.response?.data?.extras?.result_codes;
       console.error('Withdrawal failed:', resultCodes || err.message);
       throw new Error(`Withdrawal failed: ${JSON.stringify(resultCodes) || err.message}`);
@@ -161,6 +179,11 @@ export class SettlementPipeline {
     const userAddr = resolveUserAddress(userId);
     if (!userAddr) {
       throw new Error(`Cannot resolve Stellar address for user: ${userId}`);
+    }
+
+    // Replay protection — refuse to credit the same tx twice
+    if (this.db.isDepositProcessed(transactionHash)) {
+      throw new Error('Deposit transaction already processed');
     }
 
     try {
@@ -194,6 +217,9 @@ export class SettlementPipeline {
       } else {
         this.db.createUserBalance(userId, depositAmount);
       }
+
+      // Record tx hash so we never credit it twice
+      this.db.recordProcessedDeposit(transactionHash, userId, depositAmount);
 
       console.log(`  ✓ Deposit confirmed: ${userId} credited ${depositAmount} USDC from tx ${transactionHash.slice(0, 12)}...`);
       return depositAmount;

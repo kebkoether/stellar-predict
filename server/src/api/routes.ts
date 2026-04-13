@@ -563,6 +563,50 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
   });
 
   /**
+   * ADMIN — solvency check: internal liabilities vs. on-chain settlement balance
+   * Returns green if on-chain USDC >= total user liabilities.
+   */
+  router.get('/api/admin/solvency', async (req: Request, res: Response) => {
+    try {
+      const totals = db.getAccountingTotals();
+      let onChainUsdc = 0;
+      if (settler) {
+        try {
+          const onChain = await settler.getOnChainBalance();
+          onChainUsdc = parseFloat(onChain.usdc);
+        } catch {
+          // settler offline — report liabilities only
+        }
+      }
+      const surplus = onChainUsdc - totals.totalLiabilities;
+      const solvent = surplus >= -0.01; // allow 1 cent rounding tolerance
+
+      res.json({
+        solvent,
+        surplus,
+        onChainUsdc,
+        ...totals,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  /**
+   * ADMIN — audit log of deposits + withdrawals
+   */
+  router.get('/api/admin/audit', (req: Request, res: Response) => {
+    try {
+      res.json({
+        recentDeposits: db.getRecentDeposits(50),
+        recentWithdrawals: db.getRecentWithdrawals(50),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  /**
    * ADMIN — check on-chain balance of settlement account
    */
   router.get('/api/admin/onchain-balance', async (req: Request, res: Response) => {
