@@ -65,6 +65,7 @@ export interface Market {
   category?: string; // e.g. 'Politics', 'Crypto', 'Sports'
   eventId?: string; // groups multiple markets under one event (multi-outcome)
   eventTitle?: string; // display title for the event group
+  oraclePrice?: number; // reference price from Polymarket oracle (0-1)
 }
 
 /**

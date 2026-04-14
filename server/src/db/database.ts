@@ -51,6 +51,14 @@ export class DatabaseClient {
    * Initialize database schema
    */
   private initializeSchema(): void {
+    // Key-value store for app metadata (seed version, etc.)
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS meta (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    `);
+
     this.db.run(`
       CREATE TABLE IF NOT EXISTS markets (
         id TEXT PRIMARY KEY,
@@ -66,9 +74,17 @@ export class DatabaseClient {
         created_by TEXT NOT NULL,
         category TEXT,
         event_id TEXT,
-        event_title TEXT
+        event_title TEXT,
+        oracle_price REAL
       )
     `);
+
+    // Migration: add oracle_price column if missing (existing DBs)
+    try {
+      this.db.run('ALTER TABLE markets ADD COLUMN oracle_price REAL');
+    } catch (e) {
+      // Column already exists — ignore
+    }
 
     this.db.run(`
       CREATE TABLE IF NOT EXISTS orders (
@@ -246,6 +262,18 @@ export class DatabaseClient {
   }
 
   /**
+   * META (key-value store)
+   */
+  public getMeta(key: string): string | null {
+    const row = this.getOne('SELECT value FROM meta WHERE key = ?', [key]);
+    return row?.value ?? null;
+  }
+
+  public setMeta(key: string, value: string): void {
+    this.run('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)', [key, value]);
+  }
+
+  /**
    * MARKETS
    */
 
@@ -297,6 +325,10 @@ export class DatabaseClient {
     );
   }
 
+  public setOraclePrice(marketId: string, price: number): void {
+    this.run('UPDATE markets SET oracle_price = ? WHERE id = ?', [price, marketId]);
+  }
+
   private rowToMarket(row: any): Market {
     return {
       id: row.id,
@@ -315,6 +347,7 @@ export class DatabaseClient {
       category: row.category || undefined,
       eventId: row.event_id || undefined,
       eventTitle: row.event_title || undefined,
+      oraclePrice: row.oracle_price ?? undefined,
     };
   }
 

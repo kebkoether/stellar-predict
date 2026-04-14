@@ -27,10 +27,10 @@ echo "Starting reverse proxy on port ${PORT:-8080}..."
 node proxy.js &
 PROXY_PID=$!
 
-# Polymarket price oracle — polls every 60s, only requotes when >12% mispriced
+# Polymarket price feed oracle — writes reference prices only, no orders
 cd /app/server
-echo "Starting Polymarket oracle bot..."
-API_BASE=http://localhost:3000/api ORACLE_USER=oracle-bot QUOTE_SIZE=50 SPREAD_CENTS=2 REPRICE_THRESHOLD=0.12 POLL_INTERVAL_MS=60000 node dist-oracle/polymarket-oracle.js &
+echo "Starting Polymarket price feed oracle..."
+API_BASE=http://localhost:3000/api POLL_INTERVAL_MS=60000 node dist-oracle/polymarket-oracle.js &
 ORACLE_PID=$!
 
 echo "All services started!"

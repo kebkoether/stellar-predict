@@ -290,17 +290,27 @@ export default function OrderEntry({
 
       {/* Market order info */}
       {orderType === 'market' && (
-        <div className="bg-blue-900/15 border border-blue-800/40 rounded-lg p-3 mb-5">
-          <p className="text-xs text-blue-300">
-            <Zap className="w-3 h-3 inline mr-1" />
-            Fills at best available price.
-            {selectedOutcome === 'yes' && bestAsk !== null && (
-              <span className="font-semibold"> Best ask: {Math.round(bestAsk * 100)}¢</span>
-            )}
-            {selectedOutcome === 'no' && bestBid !== null && (
-              <span className="font-semibold"> Best ask: {Math.round((1 - bestBid) * 100)}¢</span>
-            )}
-          </p>
+        <div className={`rounded-lg p-3 mb-5 border ${
+          (selectedOutcome === 'yes' && bestAsk === null) || (selectedOutcome === 'no' && bestBid === null)
+            ? 'bg-yellow-900/15 border-yellow-800/40'
+            : 'bg-blue-900/15 border-blue-800/40'
+        }`}>
+          {((selectedOutcome === 'yes' && bestAsk !== null) || (selectedOutcome === 'no' && bestBid !== null)) ? (
+            <p className="text-xs text-blue-300">
+              <Zap className="w-3 h-3 inline mr-1" />
+              Fills at best available price.
+              {selectedOutcome === 'yes' && bestAsk !== null && (
+                <span className="font-semibold"> Best ask: {Math.round(bestAsk * 100)}¢</span>
+              )}
+              {selectedOutcome === 'no' && bestBid !== null && (
+                <span className="font-semibold"> Best ask: {Math.round((1 - bestBid) * 100)}¢</span>
+              )}
+            </p>
+          ) : (
+            <p className="text-xs text-yellow-300">
+              No orders on the book yet. Switch to <button onClick={() => { setOrderType('limit'); setDropdownOpen(false) }} className="underline font-semibold">Limit</button> to be the first to post — your order will rest until someone takes the other side.
+            </p>
+          )}
         </div>
       )}
 

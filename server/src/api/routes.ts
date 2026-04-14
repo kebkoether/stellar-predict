@@ -177,7 +177,8 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
     try {
       const markets = db.getAllMarkets();
 
-      // Step 1: Get raw orderbook mid price for each market
+      // Step 1: Get price for each market.
+      // Priority: orderbook mid > oracle reference price > null
       const rawPrices = new Map<string, number | null>();
       for (const m of markets) {
         const book = matching.getOrderBook(m.id, 0);
@@ -190,6 +191,10 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
           yesPrice = bestBid;
         } else if (bestAsk !== null) {
           yesPrice = bestAsk;
+        }
+        // Fall back to oracle reference price when no orderbook exists
+        if (yesPrice === null && m.oraclePrice !== undefined) {
+          yesPrice = m.oraclePrice;
         }
         rawPrices.set(m.id, yesPrice);
       }
@@ -257,6 +262,7 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
           yesPrice: Math.round(yesPrice * 100) / 100,
           noPrice: Math.round(noPrice * 100) / 100,
           yesProbability: Math.round(yesPrice * 100),
+          oraclePrice: m.oraclePrice ?? null,
           volume,
           resolutionDate: m.resolutionTime.toISOString(),
         };
@@ -485,6 +491,26 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
   /**
    * ADMIN ENDPOINTS
    */
+
+  // Set oracle reference price for a market (called by the price-feed oracle)
+  router.post('/api/admin/markets/:id/oracle-price', (req: Request, res: Response) => {
+    try {
+      const market = db.getMarket(req.params.id);
+      if (!market) {
+        res.status(404).json({ error: 'Market not found' });
+        return;
+      }
+      const { price } = req.body;
+      if (typeof price !== 'number' || price < 0 || price > 1) {
+        res.status(400).json({ error: 'price must be a number between 0 and 1' });
+        return;
+      }
+      db.setOraclePrice(req.params.id, price);
+      res.json({ message: 'Oracle price updated', marketId: req.params.id, oraclePrice: price });
+    } catch (error) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
 
   // Resolve market and pay out winners
   router.post('/api/admin/markets/:id/resolve', (req: Request, res: Response) => {
