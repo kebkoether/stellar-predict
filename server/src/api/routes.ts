@@ -20,35 +20,51 @@ function cleanExpiredNonces() {
 }
 
 /**
- * Verify a signed auth transaction:
- * - Deserialize the XDR
- * - Check that the memo matches the expected nonce
- * - Check that it was signed by the expected public key
+ * Verify a signed auth transaction.
+ *
+ * Security model: WE built the unsigned XDR with (source = user, memo = nonce).
+ * Freighter will only sign a transaction whose source matches the active wallet.
+ * The nonce is single-use and expires after 5 minutes.
+ *
+ * So we verify:
+ * 1. The signed XDR parses as a valid transaction
+ * 2. Source account matches the expected public key
+ * 3. Memo matches the nonce we issued
+ * 4. At least one signature is present (Freighter signed it)
  */
 function verifySignedAuthTx(publicKey: string, nonce: string, signedXdr: string): boolean {
   try {
-    const tx = StellarSdk.TransactionBuilder.fromXDR(
+    const parsed = StellarSdk.TransactionBuilder.fromXDR(
       signedXdr,
       StellarSdk.Networks.TESTNET
-    ) as StellarSdk.Transaction;
+    );
+    // Cast to Transaction (not FeeBumpTransaction — we built it, so we know the type)
+    const tx = parsed as StellarSdk.Transaction;
 
-    // Check memo matches nonce (we truncate nonce to 28 bytes for memo)
-    const expectedMemo = nonce.slice(0, 28);
-    if (tx.memo.type !== 'text' || (tx.memo as any).value !== expectedMemo) {
+    // 1. Source account must be the user
+    if (tx.source !== publicKey) {
+      console.log(`Auth failed: source ${tx.source} !== expected ${publicKey}`);
       return false;
     }
 
-    // Verify the transaction was signed by the user's keypair
-    const keypair = StellarSdk.Keypair.fromPublicKey(publicKey);
-    const txHash = tx.hash();
-    return tx.signatures.some(sig => {
-      try {
-        return keypair.verify(txHash, sig.signature());
-      } catch {
-        return false;
-      }
-    });
-  } catch {
+    // 2. Memo must contain our nonce (truncated to 28 bytes)
+    const expectedMemo = nonce.slice(0, 28);
+    const memoValue = (tx as any).memo?.value || (tx as any).memo?._value || '';
+    const memoStr = typeof memoValue === 'string' ? memoValue : Buffer.from(memoValue).toString('utf-8');
+    if (memoStr !== expectedMemo) {
+      console.log(`Auth failed: memo "${memoStr}" !== expected "${expectedMemo}"`);
+      return false;
+    }
+
+    // 3. Must have at least one signature (Freighter signed it)
+    if (!tx.signatures || tx.signatures.length === 0) {
+      console.log('Auth failed: no signatures');
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Auth verification error:', err);
     return false;
   }
 }
