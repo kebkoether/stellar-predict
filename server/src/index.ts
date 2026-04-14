@@ -16,24 +16,45 @@ const DEFAULT_MARKETS: Array<{
 }> = [
   // Only mutually exclusive event groups — each has exactly one winner.
   // All outcomes within an event sum to $1.00.
-  // Oracle feeds from Polymarket for named teams; "any other" gets the residual.
+  // Oracle feeds from Polymarket for named outcomes; "any other" gets the residual.
 
-  // ── Sports: NBA Champion 2026 (mutually exclusive, 4 outcomes) ──
+  // ── Sports: NBA Champion 2026 (4 outcomes) ──
   { question: 'Will the Thunder win the 2026 NBA Championship?', description: 'Resolves YES if OKC Thunder win the 2026 NBA Finals.', resolutionTime: '2026-06-30T00:00:00Z', category: 'Sports', eventId: 'nba-champ-2026', eventTitle: '2026 NBA Champion' },
   { question: 'Will the Celtics win the 2026 NBA Championship?', description: 'Resolves YES if Boston Celtics win the 2026 NBA Finals.', resolutionTime: '2026-06-30T00:00:00Z', category: 'Sports', eventId: 'nba-champ-2026', eventTitle: '2026 NBA Champion' },
   { question: 'Will the Cavaliers win the 2026 NBA Championship?', description: 'Resolves YES if Cleveland Cavaliers win the 2026 NBA Finals.', resolutionTime: '2026-06-30T00:00:00Z', category: 'Sports', eventId: 'nba-champ-2026', eventTitle: '2026 NBA Champion' },
   { question: 'Will any other team win the 2026 NBA Championship?', description: 'Resolves YES if any team other than Thunder, Celtics, or Cavaliers wins.', resolutionTime: '2026-06-30T00:00:00Z', category: 'Sports', eventId: 'nba-champ-2026', eventTitle: '2026 NBA Champion' },
 
-  // ── Sports: FIFA World Cup 2026 (mutually exclusive, 5 outcomes) ──
+  // ── Sports: FIFA World Cup 2026 (5 outcomes) ──
   { question: 'Will Brazil win the 2026 FIFA World Cup?', description: 'Resolves YES if Brazil wins the 2026 FIFA World Cup final.', resolutionTime: '2026-07-20T00:00:00Z', category: 'Sports', eventId: 'wc-2026', eventTitle: '2026 FIFA World Cup Winner' },
   { question: 'Will France win the 2026 FIFA World Cup?', description: 'Resolves YES if France wins the 2026 FIFA World Cup final.', resolutionTime: '2026-07-20T00:00:00Z', category: 'Sports', eventId: 'wc-2026', eventTitle: '2026 FIFA World Cup Winner' },
   { question: 'Will Argentina win the 2026 FIFA World Cup?', description: 'Resolves YES if Argentina wins the 2026 FIFA World Cup final.', resolutionTime: '2026-07-20T00:00:00Z', category: 'Sports', eventId: 'wc-2026', eventTitle: '2026 FIFA World Cup Winner' },
   { question: 'Will England win the 2026 FIFA World Cup?', description: 'Resolves YES if England wins the 2026 FIFA World Cup final.', resolutionTime: '2026-07-20T00:00:00Z', category: 'Sports', eventId: 'wc-2026', eventTitle: '2026 FIFA World Cup Winner' },
   { question: 'Will any other team win the 2026 FIFA World Cup?', description: 'Resolves YES if any team not listed above wins the 2026 FIFA World Cup.', resolutionTime: '2026-07-20T00:00:00Z', category: 'Sports', eventId: 'wc-2026', eventTitle: '2026 FIFA World Cup Winner' },
+
+  // ── Politics: 2028 US Presidential Election (6 outcomes) ──
+  { question: 'Will JD Vance win the 2028 US Presidential Election?', description: 'Resolves YES if JD Vance wins the 2028 US presidential election.', resolutionTime: '2028-11-10T00:00:00Z', category: 'Politics', eventId: 'us-pres-2028', eventTitle: '2028 US Presidential Election' },
+  { question: 'Will Gavin Newsom win the 2028 US Presidential Election?', description: 'Resolves YES if Gavin Newsom wins the 2028 US presidential election.', resolutionTime: '2028-11-10T00:00:00Z', category: 'Politics', eventId: 'us-pres-2028', eventTitle: '2028 US Presidential Election' },
+  { question: 'Will Alexandria Ocasio-Cortez win the 2028 US Presidential Election?', description: 'Resolves YES if AOC wins the 2028 US presidential election.', resolutionTime: '2028-11-10T00:00:00Z', category: 'Politics', eventId: 'us-pres-2028', eventTitle: '2028 US Presidential Election' },
+  { question: 'Will Kamala Harris win the 2028 US Presidential Election?', description: 'Resolves YES if Kamala Harris wins the 2028 US presidential election.', resolutionTime: '2028-11-10T00:00:00Z', category: 'Politics', eventId: 'us-pres-2028', eventTitle: '2028 US Presidential Election' },
+  { question: 'Will Tucker Carlson win the 2028 US Presidential Election?', description: 'Resolves YES if Tucker Carlson wins the 2028 US presidential election.', resolutionTime: '2028-11-10T00:00:00Z', category: 'Politics', eventId: 'us-pres-2028', eventTitle: '2028 US Presidential Election' },
+  { question: 'Will any other candidate win the 2028 US Presidential Election?', description: 'Resolves YES if any candidate not listed above wins the 2028 US presidential election.', resolutionTime: '2028-11-10T00:00:00Z', category: 'Politics', eventId: 'us-pres-2028', eventTitle: '2028 US Presidential Election' },
+
+  // ── Politics: 2026 Peru Presidential Election (4 outcomes) ──
+  { question: 'Will Keiko Fujimori win the 2026 Peruvian Presidential Election?', description: 'Resolves YES if Keiko Fujimori wins the 2026 Peru presidential election.', resolutionTime: '2026-07-28T00:00:00Z', category: 'Politics', eventId: 'peru-pres-2026', eventTitle: '2026 Peru Presidential Election' },
+  { question: 'Will Roberto Sánchez Palomino win the 2026 Peruvian Presidential Election?', description: 'Resolves YES if Roberto Sánchez Palomino wins the 2026 Peru presidential election.', resolutionTime: '2026-07-28T00:00:00Z', category: 'Politics', eventId: 'peru-pres-2026', eventTitle: '2026 Peru Presidential Election' },
+  { question: 'Will Jorge Nieto win the 2026 Peruvian Presidential Election?', description: 'Resolves YES if Jorge Nieto wins the 2026 Peru presidential election.', resolutionTime: '2026-07-28T00:00:00Z', category: 'Politics', eventId: 'peru-pres-2026', eventTitle: '2026 Peru Presidential Election' },
+  { question: 'Will any other candidate win the 2026 Peruvian Presidential Election?', description: 'Resolves YES if any candidate not listed above wins the 2026 Peru presidential election.', resolutionTime: '2026-07-28T00:00:00Z', category: 'Politics', eventId: 'peru-pres-2026', eventTitle: '2026 Peru Presidential Election' },
+
+  // ── Entertainment: Eurovision 2026 (5 outcomes) ──
+  { question: 'Will France win Eurovision 2026?', description: 'Resolves YES if France wins the 2026 Eurovision Song Contest.', resolutionTime: '2026-05-24T00:00:00Z', category: 'Entertainment', eventId: 'eurovision-2026', eventTitle: 'Eurovision 2026 Winner' },
+  { question: 'Will Israel win Eurovision 2026?', description: 'Resolves YES if Israel wins the 2026 Eurovision Song Contest.', resolutionTime: '2026-05-24T00:00:00Z', category: 'Entertainment', eventId: 'eurovision-2026', eventTitle: 'Eurovision 2026 Winner' },
+  { question: 'Will Sweden win Eurovision 2026?', description: 'Resolves YES if Sweden wins the 2026 Eurovision Song Contest.', resolutionTime: '2026-05-24T00:00:00Z', category: 'Entertainment', eventId: 'eurovision-2026', eventTitle: 'Eurovision 2026 Winner' },
+  { question: 'Will Italy win Eurovision 2026?', description: 'Resolves YES if Italy wins the 2026 Eurovision Song Contest.', resolutionTime: '2026-05-24T00:00:00Z', category: 'Entertainment', eventId: 'eurovision-2026', eventTitle: 'Eurovision 2026 Winner' },
+  { question: 'Will any other country win Eurovision 2026?', description: 'Resolves YES if any country not listed above wins Eurovision 2026.', resolutionTime: '2026-05-24T00:00:00Z', category: 'Entertainment', eventId: 'eurovision-2026', eventTitle: 'Eurovision 2026 Winner' },
 ];
 
 // SEED_VERSION: bump this to force a re-seed even if markets exist
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 
 async function seedMarkets(db: Database, force = false): Promise<void> {
   const existing = db.getAllMarkets();

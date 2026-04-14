@@ -20,13 +20,34 @@ const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '60000');
 // Map question keywords → Polymarket slug.
 // At startup, the oracle fetches all local markets and auto-matches by keyword.
 const KEYWORD_TO_SLUG: Record<string, string> = {
+  // NBA Champion 2026
   'thunder': 'will-the-oklahoma-city-thunder-win-the-2026-nba-finals',
   'celtics': 'will-the-boston-celtics-win-the-2026-nba-finals',
   'cavaliers': 'will-the-cleveland-cavaliers-win-the-2026-nba-finals',
-  'brazil': 'will-brazil-win-the-2026-fifa-world-cup-183',
+
+  // FIFA World Cup 2026
+  'brazil win the 2026 fifa': 'will-brazil-win-the-2026-fifa-world-cup-183',
   'france win the 2026 fifa': 'will-france-win-the-2026-fifa-world-cup-924',
-  'argentina': 'will-argentina-win-the-2026-fifa-world-cup-245',
-  'england': 'will-england-win-the-2026-fifa-world-cup-937',
+  'argentina win the 2026 fifa': 'will-argentina-win-the-2026-fifa-world-cup-245',
+  'england win the 2026 fifa': 'will-england-win-the-2026-fifa-world-cup-937',
+
+  // 2028 US Presidential Election
+  'jd vance': 'will-jd-vance-win-the-2028-us-presidential-election',
+  'gavin newsom': 'will-gavin-newsom-win-the-2028-us-presidential-election',
+  'ocasio-cortez': 'will-alexandria-ocasio-cortez-win-the-2028-us-presidential-election',
+  'kamala harris': 'will-kamala-harris-win-the-2028-us-presidential-election',
+  'tucker carlson': 'will-tucker-carlson-win-the-2028-us-presidential-election',
+
+  // Peru Presidential Election 2026
+  'keiko fujimori': 'will-keiko-fujimori-win-the-2026-peruvian-presidential-election',
+  'roberto sánchez palomino': 'will-roberto-snchez-palomino-win-the-2026-peruvian-presidential-election',
+  'jorge nieto': 'will-jorge-nieto-win-the-2026-peruvian-presidential-election',
+
+  // Eurovision 2026
+  'france win eurovision': 'will-france-win-eurovision-2026',
+  'israel win eurovision': 'will-israel-win-eurovision-2026',
+  'sweden win eurovision': 'will-sweden-win-eurovision-2026',
+  'italy win eurovision': 'will-italy-win-eurovision-2026',
 };
 
 // Resolved at startup by matching local markets against KEYWORD_TO_SLUG
