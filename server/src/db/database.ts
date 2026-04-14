@@ -169,6 +169,30 @@ export class DatabaseClient {
       )
     `);
 
+    // Creation bonds: USDC locked when creating a market, refunded on resolution
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS creation_bonds (
+        id TEXT PRIMARY KEY,
+        market_id TEXT NOT NULL UNIQUE,
+        user_id TEXT NOT NULL,
+        amount REAL NOT NULL,
+        status TEXT NOT NULL DEFAULT 'locked',
+        created_at TEXT NOT NULL,
+        refunded_at TEXT
+      )
+    `);
+
+    // Platform fee collections
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS platform_fees (
+        id TEXT PRIMARY KEY,
+        market_id TEXT NOT NULL,
+        fee_type TEXT NOT NULL,
+        amount REAL NOT NULL,
+        collected_at TEXT NOT NULL
+      )
+    `);
+
     this.db.run(`
       CREATE TABLE IF NOT EXISTS settlements (
         id TEXT PRIMARY KEY,
@@ -260,6 +284,10 @@ export class DatabaseClient {
   public getAllMarkets(): Market[] {
     const rows = this.getAll('SELECT * FROM markets ORDER BY created_at DESC');
     return rows.map((row) => this.rowToMarket(row));
+  }
+
+  public deleteAllMarkets(): void {
+    this.run('DELETE FROM markets');
   }
 
   public updateMarketStatus(marketId: string, status: string, resolvedOutcomeIndex?: number): void {
@@ -774,6 +802,42 @@ export class DatabaseClient {
       marketCount: marketCountRow?.c || 0,
       openMarkets: openMarketsRow?.c || 0,
     };
+  }
+
+  /**
+   * Creation bonds
+   */
+  public createBond(id: string, marketId: string, userId: string, amount: number): void {
+    this.run(
+      'INSERT INTO creation_bonds (id, market_id, user_id, amount, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, marketId, userId, amount, 'locked', new Date().toISOString()]
+    );
+  }
+
+  public getBondByMarket(marketId: string): any | null {
+    return this.getOne('SELECT * FROM creation_bonds WHERE market_id = ?', [marketId]);
+  }
+
+  public refundBond(marketId: string): void {
+    this.run(
+      "UPDATE creation_bonds SET status = 'refunded', refunded_at = ? WHERE market_id = ?",
+      [new Date().toISOString(), marketId]
+    );
+  }
+
+  /**
+   * Platform fees
+   */
+  public recordFee(id: string, marketId: string, feeType: string, amount: number): void {
+    this.run(
+      'INSERT INTO platform_fees (id, market_id, fee_type, amount, collected_at) VALUES (?, ?, ?, ?, ?)',
+      [id, marketId, feeType, amount, new Date().toISOString()]
+    );
+  }
+
+  public getTotalFesCollected(): number {
+    const row = this.getOne('SELECT COALESCE(SUM(amount), 0) as total FROM platform_fees');
+    return row?.total || 0;
   }
 
   public close(): void {

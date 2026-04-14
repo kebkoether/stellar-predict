@@ -78,6 +78,11 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
   /**
    * Validation schemas
    */
+  // ── Fee / bond config ──
+  const CREATION_BOND_USDC = 25; // $25 USDC bond to create a market (refunded on resolution)
+  const TAKER_FEE_RATE = 0.02;    // 2% of winning payouts
+  const PLATFORM_ACCOUNT = 'platform-fees'; // internal account for collected fees
+
   const CreateMarketSchema = z.object({
     question: z.string().min(1),
     description: z.string().min(1),
@@ -109,10 +114,23 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
    * MARKET ENDPOINTS
    */
 
-  // Create market
+  // Create market — requires $25 USDC bond from creator (refunded on resolution)
   router.post('/api/markets', (req: Request, res: Response) => {
     try {
       const data = CreateMarketSchema.parse(req.body);
+
+      // ── Bond check: creator must have sufficient balance ──
+      let balance = db.getUserBalance(data.createdBy);
+      if (!balance) {
+        balance = db.createUserBalance(data.createdBy, 0);
+      }
+      if (balance.available < CREATION_BOND_USDC) {
+        res.status(400).json({
+          error: `Insufficient balance for creation bond. Need $${CREATION_BOND_USDC} USDC, have $${balance.available.toFixed(2)}`,
+          bondRequired: CREATION_BOND_USDC,
+        });
+        return;
+      }
 
       const market: Market = {
         id: uuidv4(),
@@ -129,9 +147,21 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
         createdBy: data.createdBy,
       };
 
+      // Deduct bond from creator's available balance
+      db.updateUserBalance(data.createdBy, {
+        available: balance.available - CREATION_BOND_USDC,
+      });
+      db.createBond(uuidv4(), market.id, data.createdBy, CREATION_BOND_USDC);
+
       db.createMarket(market);
 
-      res.status(201).json(market);
+      console.log(`Market created by ${data.createdBy}: "${data.question}" — $${CREATION_BOND_USDC} bond locked`);
+
+      res.status(201).json({
+        ...market,
+        bondAmount: CREATION_BOND_USDC,
+        message: `$${CREATION_BOND_USDC} USDC bond locked. Refunded when market resolves.`,
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: 'Validation error', details: error.errors });
@@ -390,6 +420,21 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
         return;
       }
 
+      // MULTI-OUTCOME SAFETY: if this market is part of an event group,
+      // prevent resolving as YES if another outcome in the same event already resolved YES.
+      // (Only one outcome in an event can win.)
+      if (market.eventId && data.outcomeIndex === 0) {
+        const allMarkets = db.getAllMarkets();
+        const siblings = allMarkets.filter(m => m.eventId === market.eventId && m.id !== market.id);
+        const alreadyWon = siblings.find(m => m.status === 'resolved' && m.resolvedOutcomeIndex === 0);
+        if (alreadyWon) {
+          res.status(400).json({
+            error: `Cannot resolve as YES — another outcome in event "${market.eventId}" already won: "${alreadyWon.question}"`,
+          });
+          return;
+        }
+      }
+
       // 1. Cancel all open orders and refund locked collateral
       const cancelledCount = matching.cancelAllMarketOrders(req.params.id);
       if (cancelledCount > 0) {
@@ -407,36 +452,42 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
       //    The total pool = sum of all costBasis across all positions.
       const totalCollateral = positions.reduce((sum, p) => sum + (p.quantity > 0 ? p.costBasis : 0), 0);
 
-      // 5. Pay out winners: each winning token = $1.00
+      // 5. Pay out winners: each winning token = $1.00 minus 2% taker fee
       //    This is funded by the collateral pool (winner's own cost + loser's cost = $1.00/share)
-      const payouts: Array<{ userId: string; amount: number; costBasis: number; profit: number; outcome: string }> = [];
+      const payouts: Array<{ userId: string; grossPayout: number; fee: number; netPayout: number; costBasis: number; profit: number; outcome: string }> = [];
       const losses: Array<{ userId: string; amount: number; costBasis: number; outcome: string }> = [];
 
-      let totalPayout = 0;
+      let totalGrossPayout = 0;
+      let totalFees = 0;
       let totalLost = 0;
 
       for (const pos of positions) {
         if (pos.quantity <= 0) continue;
 
         if (pos.outcomeIndex === data.outcomeIndex) {
-          // WINNER — credit $1.00 per token to available balance
-          const payout = pos.quantity; // 1 USDC per winning token
-          const profit = payout - pos.costBasis; // profit = payout - what they paid
+          // WINNER — $1.00 per token, minus 2% taker fee
+          const grossPayout = pos.quantity; // 1 USDC per winning token
+          const fee = Math.round(grossPayout * TAKER_FEE_RATE * 100) / 100; // 2% fee, rounded to cents
+          const netPayout = grossPayout - fee;
+          const profit = netPayout - pos.costBasis;
           const balance = db.getUserBalance(pos.userId);
           if (balance) {
             db.updateUserBalance(pos.userId, {
-              available: balance.available + payout,
+              available: balance.available + netPayout,
             });
           }
-          totalPayout += payout;
+          totalGrossPayout += grossPayout;
+          totalFees += fee;
           payouts.push({
             userId: pos.userId,
-            amount: payout,
+            grossPayout,
+            fee,
+            netPayout,
             costBasis: pos.costBasis,
             profit,
             outcome: market.outcomes[pos.outcomeIndex],
           });
-          console.log(`  💰 ${pos.userId}: won $${payout.toFixed(2)} (paid $${pos.costBasis.toFixed(2)}, profit $${profit.toFixed(2)}) — held ${pos.quantity} ${market.outcomes[pos.outcomeIndex]} tokens`);
+          console.log(`  💰 ${pos.userId}: won $${netPayout.toFixed(2)} (gross $${grossPayout.toFixed(2)} - $${fee.toFixed(2)} fee, paid $${pos.costBasis.toFixed(2)}, profit $${profit.toFixed(2)})`);
         } else {
           // LOSER — tokens are worthless, collateral is forfeit
           totalLost += pos.costBasis;
@@ -450,11 +501,38 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
         }
       }
 
-      // 6. Verify zero-sum: total payout should equal total collateral
-      //    (winners get their own cost back + losers' cost)
-      const imbalance = Math.abs(totalPayout - totalCollateral);
+      // 5b. Credit collected fees to platform account
+      if (totalFees > 0) {
+        let platformBal = db.getUserBalance(PLATFORM_ACCOUNT);
+        if (!platformBal) {
+          platformBal = db.createUserBalance(PLATFORM_ACCOUNT, 0);
+        }
+        db.updateUserBalance(PLATFORM_ACCOUNT, {
+          available: platformBal.available + totalFees,
+        });
+        db.recordFee(uuidv4(), req.params.id, 'taker_fee', totalFees);
+        console.log(`  🏦 Platform fees collected: $${totalFees.toFixed(2)} (${(TAKER_FEE_RATE * 100).toFixed(0)}% of $${totalGrossPayout.toFixed(2)})`);
+      }
+
+      // 5c. Refund creation bond to market creator
+      const bond = db.getBondByMarket(req.params.id);
+      if (bond && bond.status === 'locked') {
+        const creatorBal = db.getUserBalance(bond.user_id);
+        if (creatorBal) {
+          db.updateUserBalance(bond.user_id, {
+            available: creatorBal.available + bond.amount,
+          });
+        }
+        db.refundBond(req.params.id);
+        console.log(`  🔓 Creation bond refunded: $${bond.amount.toFixed(2)} → ${bond.user_id}`);
+      }
+
+      // 6. Verify zero-sum: gross payout should equal total collateral
+      //    (net payout + fees = collateral)
+      const totalNetPayout = totalGrossPayout - totalFees;
+      const imbalance = Math.abs(totalGrossPayout - totalCollateral);
       if (imbalance > 0.01) {
-        console.warn(`⚠️ IMBALANCE DETECTED: payout=$${totalPayout.toFixed(2)}, collateral=$${totalCollateral.toFixed(2)}, diff=$${imbalance.toFixed(2)}`);
+        console.warn(`⚠️ IMBALANCE DETECTED: grossPayout=$${totalGrossPayout.toFixed(2)}, collateral=$${totalCollateral.toFixed(2)}, diff=$${imbalance.toFixed(2)}`);
       }
 
       const updated = db.getMarket(req.params.id)!;
@@ -462,19 +540,25 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
 
       console.log(`\nMarket resolved: "${market.question}" → ${winningOutcome}`);
       console.log(`  Collateral pool: $${totalCollateral.toFixed(2)}`);
-      console.log(`  Winners: ${payouts.length}, Total payout: $${totalPayout.toFixed(2)} (${payouts.map(p => `${p.userId}: +$${p.profit.toFixed(2)}`).join(', ')})`);
-      console.log(`  Losers: ${losses.length}, Total lost: $${totalLost.toFixed(2)} (${losses.map(l => `${l.userId}: -$${l.amount.toFixed(2)}`).join(', ')})`);
-      console.log(`  Zero-sum check: payout $${totalPayout.toFixed(2)} = collateral $${totalCollateral.toFixed(2)} → ${imbalance < 0.01 ? '✅ BALANCED' : '❌ IMBALANCED'}`);
+      console.log(`  Gross payout: $${totalGrossPayout.toFixed(2)}, Fees: $${totalFees.toFixed(2)}, Net payout: $${totalNetPayout.toFixed(2)}`);
+      console.log(`  Winners: ${payouts.length} (${payouts.map(p => `${p.userId}: +$${p.profit.toFixed(2)}`).join(', ')})`);
+      console.log(`  Losers: ${losses.length}, Total lost: $${totalLost.toFixed(2)}`);
+      console.log(`  Zero-sum check: gross $${totalGrossPayout.toFixed(2)} = collateral $${totalCollateral.toFixed(2)} → ${imbalance < 0.01 ? '✅ BALANCED' : '❌ IMBALANCED'}`);
 
       res.json({
         message: `Market resolved: ${winningOutcome} wins`,
         market: updated,
         winningOutcome,
         collateralPool: totalCollateral,
+        takerFeeRate: TAKER_FEE_RATE,
+        totalFeesCollected: totalFees,
         payouts,
         losses,
+        bondRefunded: bond ? bond.amount : 0,
         zeroSumCheck: {
-          totalPayout,
+          totalGrossPayout,
+          totalNetPayout,
+          totalFees,
           totalCollateral,
           balanced: imbalance < 0.01,
         },
@@ -506,6 +590,16 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
       res.json(leaderboard);
     } catch (error) {
       res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Admin: force reseed markets (deletes ALL existing markets + orders)
+  router.post('/api/admin/reseed', (req: Request, res: Response) => {
+    try {
+      db.deleteAllMarkets();
+      res.json({ message: 'All markets deleted. Restart the server to reseed.' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -734,6 +828,77 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
         recentDeposits: db.getRecentDeposits(50),
         recentWithdrawals: db.getRecentWithdrawals(50),
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  /**
+   * ADMIN — platform revenue: total fees collected + bond status
+   */
+  router.get('/api/admin/revenue', (req: Request, res: Response) => {
+    try {
+      const totalFees = db.getTotalFesCollected();
+      const platformBal = db.getUserBalance(PLATFORM_ACCOUNT);
+      res.json({
+        totalFeesCollected: totalFees,
+        platformBalance: platformBal?.available || 0,
+        takerFeeRate: TAKER_FEE_RATE,
+        creationBondAmount: CREATION_BOND_USDC,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  /**
+   * ADMIN — sweep platform fees to a house wallet.
+   * Sends accumulated taker fees from the settlement account to a designated wallet.
+   * The platform-fees internal balance is debited; real USDC is sent on-chain.
+   */
+  router.post('/api/admin/sweep-fees', async (req: Request, res: Response) => {
+    try {
+      if (!settler) {
+        return res.status(503).json({ error: 'Settlement pipeline not configured' });
+      }
+      const { destinationWallet } = req.body;
+      if (!destinationWallet) {
+        return res.status(400).json({ error: 'destinationWallet is required' });
+      }
+
+      const platformBal = db.getUserBalance(PLATFORM_ACCOUNT);
+      if (!platformBal || platformBal.available <= 0) {
+        return res.status(400).json({ error: 'No fees available to sweep', balance: 0 });
+      }
+
+      const sweepAmount = platformBal.available;
+
+      // Deduct from platform balance FIRST (deduct-first pattern, same as withdrawals)
+      db.updateUserBalance(PLATFORM_ACCOUNT, { available: 0 });
+
+      try {
+        // Send USDC on-chain from settlement account → house wallet
+        // We use sendOnChainPayment (bypasses internal balance check — we already deducted above)
+        const hash = await settler.sendOnChainPayment(destinationWallet, sweepAmount);
+
+        db.recordFee(uuidv4(), 'sweep', 'fee_sweep', sweepAmount);
+
+        console.log(`🏦 Fee sweep: $${sweepAmount.toFixed(2)} → ${destinationWallet} (tx: ${hash})`);
+        res.json({
+          success: true,
+          amount: sweepAmount,
+          destination: destinationWallet,
+          transactionHash: hash,
+        });
+      } catch (err: any) {
+        // Refund platform balance on failure
+        const currentBal = db.getUserBalance(PLATFORM_ACCOUNT);
+        db.updateUserBalance(PLATFORM_ACCOUNT, {
+          available: (currentBal?.available || 0) + sweepAmount,
+        });
+        console.error(`🏦 Fee sweep FAILED, refunded $${sweepAmount.toFixed(2)}:`, err.message);
+        res.status(500).json({ error: `Sweep failed: ${err.message}`, refunded: sweepAmount });
+      }
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

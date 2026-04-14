@@ -101,7 +101,7 @@ export default function Home() {
               Trade Tomorrow, Today
             </h1>
             <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-              Put your money where your mouth is. On-chain prediction markets — settled on Stellar, backed by USDC.
+              Derisk what you can. Hedge what you can't. On-chain prediction markets — settled on Stellar, backed by USDC.
             </p>
           </div>
 

@@ -24,12 +24,16 @@ const SPREAD_CENTS = parseInt(process.env.SPREAD_CENTS || '2'); // half-spread, 
 const QUOTE_SIZE = parseFloat(process.env.QUOTE_SIZE || '50'); // shares per side
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '45000');
 const MAX_DIVERGENCE = 0.1; // if Polymarket price > 95¢ or < 5¢ pull quotes (edge risk)
+const REPRICE_THRESHOLD = parseFloat(process.env.REPRICE_THRESHOLD || '0.12'); // 12% — only requote when mispriced by more than this
 
 // Map your local marketId (UUID) → Polymarket slug.
 // Find slugs at https://polymarket.com/event/<slug>
 const POLYMARKET_SLUGS: Record<string, string> = {
   // 'your-market-uuid-here': 'will-bitcoin-exceed-200k-by-end-of-2026',
 };
+
+// Track the last price we quoted, so we only cancel + re-quote when divergence exceeds the threshold
+const lastQuotedPrice = new Map<string, number>();
 
 type PmPrice = { yes: number; no: number };
 
@@ -114,13 +118,27 @@ async function requoteMarket(localMarketId: string, slug: string): Promise<void>
   }
 
   // Sanity: skip if Polymarket says market is extreme (tail risk)
-  if (pm.yes < 1 - MAX_DIVERGENCE && pm.yes > MAX_DIVERGENCE === false) {
-    // (this condition is intentional — we skip if yes < 0.1 or > 0.9)
-  }
   if (pm.yes < MAX_DIVERGENCE || pm.yes > 1 - MAX_DIVERGENCE) {
     console.log(`[oracle] ${slug} extreme price ${pm.yes.toFixed(2)} — pulling quotes`);
     await cancelOracleOrders(localMarketId);
+    lastQuotedPrice.delete(localMarketId);
     return;
+  }
+
+  // 12% threshold: only requote if Polymarket price has diverged more than REPRICE_THRESHOLD
+  // from the last price we quoted. This leaves room for arbitrageurs to trade the gap.
+  const lastPrice = lastQuotedPrice.get(localMarketId);
+  if (lastPrice !== undefined) {
+    const divergence = Math.abs(pm.yes - lastPrice);
+    if (divergence < REPRICE_THRESHOLD) {
+      console.log(
+        `[oracle] ${slug.slice(0, 30)}… divergence ${(divergence * 100).toFixed(1)}% < ${(REPRICE_THRESHOLD * 100).toFixed(0)}% threshold — holding quotes`
+      );
+      return;
+    }
+    console.log(
+      `[oracle] ${slug.slice(0, 30)}… divergence ${(divergence * 100).toFixed(1)}% ≥ ${(REPRICE_THRESHOLD * 100).toFixed(0)}% — requoting`
+    );
   }
 
   await cancelOracleOrders(localMarketId);
@@ -131,8 +149,12 @@ async function requoteMarket(localMarketId: string, slug: string): Promise<void>
 
   // Quote both sides on YES (outcomeIndex=0). Buying NO is equivalent to selling YES,
   // but we keep it simple and only quote the YES book for MVP.
-  await placeOrder(localMarketId, 'buy', 0, bidYes, QUOTE_SIZE);
-  await placeOrder(localMarketId, 'sell', 0, askYes, QUOTE_SIZE);
+  const bidOk = await placeOrder(localMarketId, 'buy', 0, bidYes, QUOTE_SIZE);
+  const askOk = await placeOrder(localMarketId, 'sell', 0, askYes, QUOTE_SIZE);
+
+  if (bidOk && askOk) {
+    lastQuotedPrice.set(localMarketId, pm.yes);
+  }
 
   console.log(
     `[oracle] ${slug.slice(0, 30)}… mid=${pm.yes.toFixed(2)} quoted ${bidYes.toFixed(2)}/${askYes.toFixed(2)}`
@@ -154,7 +176,7 @@ async function tick(): Promise<void> {
 
 async function main(): Promise<void> {
   console.log(`[oracle] Starting Polymarket oracle bot`);
-  console.log(`[oracle] API=${API_BASE} user=${ORACLE_USER} size=${QUOTE_SIZE} spread=±${SPREAD_CENTS}¢`);
+  console.log(`[oracle] API=${API_BASE} user=${ORACLE_USER} size=${QUOTE_SIZE} spread=±${SPREAD_CENTS}¢ threshold=${(REPRICE_THRESHOLD * 100).toFixed(0)}%`);
 
   // Ensure oracle has a balance (seed if first run) — in prod you'd deposit real USDC
   try {

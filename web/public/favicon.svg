@@ -1,25 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
   <defs>
-    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366F1"/>
-      <stop offset="50%" stop-color="#8B5CF6"/>
-      <stop offset="100%" stop-color="#EC4899"/>
-    </linearGradient>
-    <linearGradient id="bush" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#22C55E"/>
+    <linearGradient id="bush1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4ADE80"/>
       <stop offset="100%" stop-color="#166534"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
     </linearGradient>
   </defs>
   <rect width="256" height="256" rx="48" fill="#0F172A"/>
-  <!-- Hedge bush shape (rounded lumpy top) -->
-  <ellipse cx="128" cy="180" rx="90" ry="50" fill="url(#bush)" opacity="0.9"/>
-  <ellipse cx="90" cy="160" rx="50" ry="40" fill="url(#bush)"/>
-  <ellipse cx="166" cy="155" rx="55" ry="45" fill="url(#bush)"/>
-  <ellipse cx="128" cy="145" rx="45" ry="35" fill="#22C55E"/>
-  <!-- Star rising from the hedge -->
-  <path d="M128 28 L138 68 L178 68 L146 90 L158 130 L128 108 L98 130 L110 90 L78 68 L118 68 Z" fill="url(#g)"/>
-  <!-- Sparkle dots -->
-  <circle cx="60" cy="45" r="2" fill="#FBBF24"/>
-  <circle cx="200" cy="38" r="2.5" fill="#FBBF24"/>
-  <circle cx="45" cy="120" r="1.5" fill="#FBBF24"/>
+  <!-- Large hedge bush -->
+  <ellipse cx="128" cy="195" rx="100" ry="45" fill="#166534"/>
+  <ellipse cx="75" cy="170" rx="60" ry="50" fill="url(#bush1)"/>
+  <ellipse cx="180" cy="165" rx="60" ry="55" fill="url(#bush1)"/>
+  <ellipse cx="128" cy="155" rx="65" ry="48" fill="#22C55E"/>
+  <ellipse cx="128" cy="140" rx="45" ry="30" fill="#4ADE80"/>
+  <!-- Dollar signs growing up from the bush -->
+  <text x="80" y="105" font-family="Arial, sans-serif" font-size="48" font-weight="900" fill="url(#gold)" opacity="0.95">$</text>
+  <text x="128" y="78" font-family="Arial, sans-serif" font-size="56" font-weight="900" fill="url(#gold)">$</text>
+  <text x="168" y="100" font-family="Arial, sans-serif" font-size="40" font-weight="900" fill="url(#gold)" opacity="0.85">$</text>
 </svg>

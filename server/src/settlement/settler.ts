@@ -171,6 +171,35 @@ export class SettlementPipeline {
   }
 
   /**
+   * Send a raw USDC payment on-chain (no internal balance changes).
+   * Used for admin operations like fee sweeps where balances are managed by the caller.
+   */
+  public async sendOnChainPayment(destination: string, amount: number): Promise<string> {
+    const account = await this.server.loadAccount(this.keypair.publicKey());
+    const networkPassphrase = this.network === 'testnet' ? Networks.TESTNET : Networks.PUBLIC;
+    const usdcAsset = new Asset(this.usdc.code, this.usdc.issuer);
+
+    const tx = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase,
+    })
+      .addOperation(
+        Operation.payment({
+          destination,
+          asset: usdcAsset,
+          amount: amount.toFixed(7),
+        })
+      )
+      .addMemo(StellarSdk.Memo.text('sweep:fees'))
+      .setTimeout(30)
+      .build();
+
+    tx.sign(this.keypair);
+    const result = await this.server.submitTransaction(tx);
+    return (result as any).hash;
+  }
+
+  /**
    * Process a user deposit — verifies an incoming USDC payment and credits internal balance
    * In production, you'd watch for incoming payments via Horizon streaming.
    * For now, this checks a specific transaction.
