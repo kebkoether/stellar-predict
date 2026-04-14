@@ -206,10 +206,38 @@ export default function DepositWithdrawModal({
         throw new Error(`Insufficient balance. You have $${balance.available.toFixed(2)} available`)
       }
 
+      // Step 1: Get a nonce from the backend
+      setSuccess('Requesting authorization...')
+      const nonceRes = await fetch(`${API_BASE}/auth/nonce/${publicKey}`)
+      if (!nonceRes.ok) throw new Error('Failed to get authorization nonce')
+      const { nonce } = await nonceRes.json()
+
+      // Step 2: Sign the nonce with Freighter (proves wallet ownership)
+      setSuccess('Please approve the withdrawal in Freighter...')
+      const freighterApi = await import('@stellar/freighter-api')
+
+      // signMessage returns a base64-encoded signature
+      let signature: string
+      try {
+        const signResult = await (freighterApi as any).signMessage(nonce, {
+          networkPassphrase: 'Test SDF Network ; September 2015',
+          address: publicKey,
+        })
+        // Handle both old (string) and new (object) Freighter API responses
+        signature = typeof signResult === 'string' ? signResult : signResult?.signedMessage || signResult?.signature || signResult
+      } catch (signErr: any) {
+        if (signErr?.message?.includes('User declined') || signErr?.message?.includes('cancelled')) {
+          throw new Error('Withdrawal cancelled — you declined in Freighter')
+        }
+        throw signErr
+      }
+
+      // Step 3: Submit withdrawal with signed nonce
+      setSuccess('Processing withdrawal...')
       const res = await fetch(`${API_BASE}/users/${publicKey}/withdraw`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: withdrawAmount }),
+        body: JSON.stringify({ amount: withdrawAmount, nonce, signature }),
       })
 
       if (!res.ok) {
@@ -218,7 +246,7 @@ export default function DepositWithdrawModal({
       }
 
       const result = await res.json()
-      setSuccess(`Withdrew $${withdrawAmount.toFixed(2)} to your wallet${result.txHash ? ` (tx: ${result.txHash.slice(0, 8)}...)` : ''}`)
+      setSuccess(`Withdrew $${withdrawAmount.toFixed(2)} to your wallet${result.transactionHash ? ` (tx: ${result.transactionHash.slice(0, 8)}...)` : ''}`)
       setAmount('')
       await refreshBalance()
     } catch (err) {

@@ -1,9 +1,33 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
+import * as StellarSdk from '@stellar/stellar-sdk';
 import { Database } from '../db/database';
 import { MatchingEngine } from '../engine/matching';
 import { Order, Market } from '../types';
+
+// In-memory nonce store: nonce → { userId, createdAt }
+// Nonces expire after 5 minutes and are single-use
+const nonceStore = new Map<string, { userId: string; createdAt: number }>();
+const NONCE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function cleanExpiredNonces() {
+  const now = Date.now();
+  for (const [nonce, data] of nonceStore) {
+    if (now - data.createdAt > NONCE_TTL_MS) nonceStore.delete(nonce);
+  }
+}
+
+function verifySignature(publicKey: string, nonce: string, signatureBase64: string): boolean {
+  try {
+    const keypair = StellarSdk.Keypair.fromPublicKey(publicKey);
+    const messageBuffer = Buffer.from(nonce, 'utf-8');
+    const signatureBuffer = Buffer.from(signatureBase64, 'base64');
+    return keypair.verify(messageBuffer, signatureBuffer);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Express router with REST API endpoints
@@ -470,7 +494,20 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
   });
 
   /**
+   * AUTH — generate a nonce for signature-based withdrawal auth
+   * Frontend calls this, then asks Freighter to sign the nonce,
+   * then sends the signature with the withdraw request.
+   */
+  router.get('/api/auth/nonce/:userId', (req: Request, res: Response) => {
+    cleanExpiredNonces();
+    const nonce = `stellar-hedge:withdraw:${req.params.userId}:${uuidv4()}:${Date.now()}`;
+    nonceStore.set(nonce, { userId: req.params.userId, createdAt: Date.now() });
+    res.json({ nonce });
+  });
+
+  /**
    * WITHDRAWAL — sends USDC on-chain from settlement account to user's wallet
+   * Requires a Freighter-signed nonce to prove wallet ownership.
    */
   router.post('/api/users/:userId/withdraw', async (req: Request, res: Response) => {
     try {
@@ -478,10 +515,38 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
         return res.status(503).json({ error: 'Settlement pipeline not configured' });
       }
       const { userId } = req.params;
-      const { amount } = req.body;
+      const { amount, nonce, signature } = req.body;
+
       if (!amount || amount <= 0) {
         return res.status(400).json({ error: 'Amount must be positive' });
       }
+
+      // Require signed nonce
+      if (!nonce || !signature) {
+        return res.status(401).json({ error: 'Withdrawal requires a signed nonce. Get one from /api/auth/nonce/:userId' });
+      }
+
+      // Check nonce exists and belongs to this user
+      const nonceData = nonceStore.get(nonce);
+      if (!nonceData) {
+        return res.status(401).json({ error: 'Invalid or expired nonce' });
+      }
+      if (nonceData.userId !== userId) {
+        return res.status(401).json({ error: 'Nonce does not match user' });
+      }
+      if (Date.now() - nonceData.createdAt > NONCE_TTL_MS) {
+        nonceStore.delete(nonce);
+        return res.status(401).json({ error: 'Nonce expired' });
+      }
+
+      // Verify cryptographic signature
+      if (!verifySignature(userId, nonce, signature)) {
+        return res.status(401).json({ error: 'Invalid signature — wallet verification failed' });
+      }
+
+      // Consume nonce (single-use)
+      nonceStore.delete(nonce);
+
       const hash = await settler.processWithdrawal(userId, amount);
       res.json({ success: true, transactionHash: hash, amount, userId });
     } catch (error: any) {
