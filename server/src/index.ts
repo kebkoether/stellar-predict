@@ -14,25 +14,17 @@ const DEFAULT_MARKETS: Array<{
   question: string; description: string; resolutionTime: string; category?: string;
   eventId?: string; eventTitle?: string;
 }> = [
-  // ── Crypto (3) ──
-  { question: 'Will BTC exceed $200k by end of 2026?', description: 'Resolves YES if Bitcoin reaches $200,000 USD on any major exchange before January 1, 2027.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Crypto' },
-  { question: 'Will a spot Solana ETF be approved in the US in 2026?', description: 'Resolves YES if the SEC approves at least one spot Solana ETF during 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Crypto' },
-  { question: 'Will global crypto market cap exceed $10T in 2026?', description: 'Resolves YES if total crypto market cap (CoinGecko) exceeds $10 trillion at any point during 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Crypto' },
+  // Only mutually exclusive event groups — each has exactly one winner.
+  // All outcomes within an event sum to $1.00.
+  // Oracle feeds from Polymarket for named teams; "any other" gets the residual.
 
-  // ── Politics (2) ──
-  { question: 'Will there be a US government shutdown in 2026?', description: 'Resolves YES if the US federal government enters a partial or full shutdown at any point during 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Politics' },
-  { question: 'Will the US pass a stablecoin regulation bill in 2026?', description: 'Resolves YES if Congress passes and the President signs a stablecoin bill during 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Politics' },
-
-  // ── Tech (1) ──
-  { question: 'Will Apple announce consumer AR glasses in 2026?', description: 'Resolves YES if Apple formally announces a consumer augmented-reality glasses product (not Vision Pro) in 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Tech' },
-
-  // ── Sports: NBA Champion (multi-outcome, 4 options) ──
+  // ── Sports: NBA Champion 2026 (mutually exclusive, 4 outcomes) ──
   { question: 'Will the Thunder win the 2026 NBA Championship?', description: 'Resolves YES if OKC Thunder win the 2026 NBA Finals.', resolutionTime: '2026-06-30T00:00:00Z', category: 'Sports', eventId: 'nba-champ-2026', eventTitle: '2026 NBA Champion' },
   { question: 'Will the Celtics win the 2026 NBA Championship?', description: 'Resolves YES if Boston Celtics win the 2026 NBA Finals.', resolutionTime: '2026-06-30T00:00:00Z', category: 'Sports', eventId: 'nba-champ-2026', eventTitle: '2026 NBA Champion' },
   { question: 'Will the Cavaliers win the 2026 NBA Championship?', description: 'Resolves YES if Cleveland Cavaliers win the 2026 NBA Finals.', resolutionTime: '2026-06-30T00:00:00Z', category: 'Sports', eventId: 'nba-champ-2026', eventTitle: '2026 NBA Champion' },
   { question: 'Will any other team win the 2026 NBA Championship?', description: 'Resolves YES if any team other than Thunder, Celtics, or Cavaliers wins.', resolutionTime: '2026-06-30T00:00:00Z', category: 'Sports', eventId: 'nba-champ-2026', eventTitle: '2026 NBA Champion' },
 
-  // ── Sports: FIFA World Cup (multi-outcome, 5 options) ──
+  // ── Sports: FIFA World Cup 2026 (mutually exclusive, 5 outcomes) ──
   { question: 'Will Brazil win the 2026 FIFA World Cup?', description: 'Resolves YES if Brazil wins the 2026 FIFA World Cup final.', resolutionTime: '2026-07-20T00:00:00Z', category: 'Sports', eventId: 'wc-2026', eventTitle: '2026 FIFA World Cup Winner' },
   { question: 'Will France win the 2026 FIFA World Cup?', description: 'Resolves YES if France wins the 2026 FIFA World Cup final.', resolutionTime: '2026-07-20T00:00:00Z', category: 'Sports', eventId: 'wc-2026', eventTitle: '2026 FIFA World Cup Winner' },
   { question: 'Will Argentina win the 2026 FIFA World Cup?', description: 'Resolves YES if Argentina wins the 2026 FIFA World Cup final.', resolutionTime: '2026-07-20T00:00:00Z', category: 'Sports', eventId: 'wc-2026', eventTitle: '2026 FIFA World Cup Winner' },
@@ -41,18 +33,22 @@ const DEFAULT_MARKETS: Array<{
 ];
 
 // SEED_VERSION: bump this to force a re-seed even if markets exist
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 async function seedMarkets(db: Database, force = false): Promise<void> {
   const existing = db.getAllMarkets();
 
-  if (!force && existing.length > 0) {
-    console.log(`Database has ${existing.length} markets — skipping seed (v${SEED_VERSION})`);
+  // Check stored seed version — if it matches, skip even on restart
+  const storedVersion = db.getMeta('seed_version');
+  if (!force && storedVersion === String(SEED_VERSION) && existing.length > 0) {
+    console.log(`Database has ${existing.length} markets at seed v${SEED_VERSION} — skipping`);
     return;
   }
 
-  if (force && existing.length > 0) {
-    console.log(`Force re-seed: deleting ${existing.length} old markets...`);
+  // Version mismatch or no markets → reseed
+  const needsReseed = !force && storedVersion !== String(SEED_VERSION) && existing.length > 0;
+  if (needsReseed || (force && existing.length > 0)) {
+    console.log(`Re-seeding: v${storedVersion || '?'} → v${SEED_VERSION} (deleting ${existing.length} old markets, preserving balances)...`);
     db.deleteAllMarkets();
   }
 
@@ -76,7 +72,8 @@ async function seedMarkets(db: Database, force = false): Promise<void> {
       eventTitle: m.eventTitle,
     });
   }
-  console.log(`Seeded ${DEFAULT_MARKETS.length} markets`);
+  db.setMeta('seed_version', String(SEED_VERSION));
+  console.log(`Seeded ${DEFAULT_MARKETS.length} markets (v${SEED_VERSION})`);
 }
 
 let app: Express;
