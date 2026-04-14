@@ -26,20 +26,42 @@ const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '45000');
 const MAX_DIVERGENCE = 0.1; // if Polymarket price > 95¢ or < 5¢ pull quotes (edge risk)
 const REPRICE_THRESHOLD = parseFloat(process.env.REPRICE_THRESHOLD || '0.12'); // 12% — only requote when mispriced by more than this
 
-// Map your local marketId (UUID) → Polymarket slug.
-// Find slugs at https://polymarket.com/event/<slug>
-// NOTE: UUIDs are generated at seed time — if you reseed, update these!
-const POLYMARKET_SLUGS: Record<string, string> = {
-  // ── NBA Championship 2026 ──
-  '15ae34d9-5c4e-400c-a04b-beacc286b38b': 'will-the-oklahoma-city-thunder-win-the-2026-nba-finals',
-  '5a955f07-e36d-4036-b153-02bb7591bb71': 'will-the-boston-celtics-win-the-2026-nba-finals',
-  '377b3478-c05d-46d2-9e08-f219be410745': 'will-the-cleveland-cavaliers-win-the-2026-nba-finals',
-  // ── FIFA World Cup 2026 ──
-  'bf581c45-757d-440a-879b-8f29901af6cd': 'will-brazil-win-the-2026-fifa-world-cup-183',
-  '5f12dfbd-ae9f-4d83-9ee7-c55a6939a515': 'will-france-win-the-2026-fifa-world-cup-924',
-  '46b73710-67d1-432e-88c6-66bd425898f4': 'will-argentina-win-the-2026-fifa-world-cup-245',
-  'ad21f33b-4f38-4705-8320-a0c1dfab1b5d': 'will-england-win-the-2026-fifa-world-cup-937',
+// Map question keywords → Polymarket slug.
+// At startup, the oracle fetches all local markets and auto-matches by keyword.
+// This way, UUIDs don't need updating when you reseed.
+const KEYWORD_TO_SLUG: Record<string, string> = {
+  'thunder': 'will-the-oklahoma-city-thunder-win-the-2026-nba-finals',
+  'celtics': 'will-the-boston-celtics-win-the-2026-nba-finals',
+  'cavaliers': 'will-the-cleveland-cavaliers-win-the-2026-nba-finals',
+  'brazil': 'will-brazil-win-the-2026-fifa-world-cup-183',
+  'france win the 2026 fifa': 'will-france-win-the-2026-fifa-world-cup-924',
+  'argentina': 'will-argentina-win-the-2026-fifa-world-cup-245',
+  'england': 'will-england-win-the-2026-fifa-world-cup-937',
 };
+
+// Resolved at startup by matching local markets against KEYWORD_TO_SLUG
+let POLYMARKET_SLUGS: Record<string, string> = {};
+
+async function buildSlugMapping(): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/markets`);
+    if (!res.ok) { console.error('[oracle] Failed to fetch local markets'); return; }
+    const markets = (await res.json()) as any[];
+    for (const m of markets) {
+      const q = (m.question || '').toLowerCase();
+      for (const [keyword, slug] of Object.entries(KEYWORD_TO_SLUG)) {
+        if (q.includes(keyword.toLowerCase())) {
+          POLYMARKET_SLUGS[m.id] = slug;
+          console.log(`[oracle] Mapped ${m.id.slice(0,8)}… "${m.question.slice(0,50)}" → ${slug.slice(0,40)}…`);
+          break;
+        }
+      }
+    }
+    console.log(`[oracle] Auto-mapped ${Object.keys(POLYMARKET_SLUGS).length} markets to Polymarket slugs`);
+  } catch (e) {
+    console.error('[oracle] Failed to build slug mapping:', e);
+  }
+}
 
 // Track the last price we quoted, so we only cancel + re-quote when divergence exceeds the threshold
 const lastQuotedPrice = new Map<string, number>();
@@ -190,6 +212,9 @@ async function tick(): Promise<void> {
 async function main(): Promise<void> {
   console.log(`[oracle] Starting Polymarket oracle bot`);
   console.log(`[oracle] API=${API_BASE} user=${ORACLE_USER} size=${QUOTE_SIZE} spread=±${SPREAD_CENTS}¢ threshold=${(REPRICE_THRESHOLD * 100).toFixed(0)}%`);
+
+  // Auto-discover local market IDs and match them to Polymarket slugs by keyword
+  await buildSlugMapping();
 
   // Ensure oracle has a balance (seed if first run) — in prod you'd deposit real USDC
   try {
