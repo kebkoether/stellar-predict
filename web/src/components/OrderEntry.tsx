@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Wallet, Zap, ChevronDown } from 'lucide-react'
 import { useWalletContext } from '@/context/WalletContext'
+import { useToast } from '@/components/Toast'
 
 interface OrderEntryProps {
   marketId: string
@@ -32,6 +33,7 @@ export default function OrderEntry({
   initialAction,
 }: OrderEntryProps) {
   const { connected, publicKey, connect, balance, refreshBalance } = useWalletContext()
+  const { showToast } = useToast()
   const [selectedOutcome, setSelectedOutcome] = useState<'yes' | 'no'>(initialAction === 'sell' ? 'no' : 'yes')
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
   const [price, setPrice] = useState(50)
@@ -154,17 +156,27 @@ export default function OrderEntry({
 
       if (orderType === 'market') {
         if (filledQty > 0) {
-          setSuccess(`Filled ${filledQty} ${outcomeName} shares`)
+          const msg = `Filled ${filledQty} ${outcomeName} shares`
+          setSuccess(msg)
+          showToast('success', msg)
         } else {
-          setError('No liquidity — try a limit order instead')
+          const msg = 'No liquidity — try a limit order instead'
+          setError(msg)
+          showToast('error', msg)
         }
       } else {
         if (filledQty === quantity) {
-          setSuccess(`Filled ${quantity} ${outcomeName} at ${price}¢`)
+          const msg = `Filled ${quantity} ${outcomeName} at ${price}¢`
+          setSuccess(msg)
+          showToast('success', msg)
         } else if (filledQty > 0) {
-          setSuccess(`Partial fill: ${filledQty}/${quantity} ${outcomeName} at ${price}¢`)
+          const msg = `Partial fill: ${filledQty}/${quantity} ${outcomeName} at ${price}¢`
+          setSuccess(msg)
+          showToast('success', msg)
         } else {
-          setSuccess(`Order placed: ${quantity} ${outcomeName} at ${price}¢`)
+          const msg = `Order placed: ${quantity} ${outcomeName} at ${price}¢`
+          setSuccess(msg)
+          showToast('success', msg)
         }
       }
 
@@ -172,7 +184,9 @@ export default function OrderEntry({
       await refreshBalance()
       if (onOrderPlaced) setTimeout(onOrderPlaced, 500)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      setError(msg)
+      showToast('error', msg)
     } finally {
       setLoading(false)
     }

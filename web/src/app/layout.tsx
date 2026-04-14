@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import { WalletProvider } from '@/context/WalletContext'
+import { ToastProvider } from '@/components/Toast'
 
 export const metadata: Metadata = {
   title: 'Stellar (H)edge — Prediction Markets on Stellar',
@@ -21,6 +22,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-slate-950 text-white">
         <WalletProvider>
+          <ToastProvider>
           <Navbar />
           <main className="min-h-screen">
             {children}
@@ -66,6 +68,7 @@ export default function RootLayout({
               </div>
             </div>
           </footer>
+        </ToastProvider>
         </WalletProvider>
       </body>
     </html>

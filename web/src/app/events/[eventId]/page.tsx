@@ -45,6 +45,7 @@ export default function EventPage() {
   const [eventTitle, setEventTitle] = useState('')
   const [category, setCategory] = useState('')
   const [sidebarAction, setSidebarAction] = useState<'buy' | 'sell'>('buy')
+  const [sidebarPulse, setSidebarPulse] = useState(false)
 
   const fetchMarkets = useCallback(async () => {
     try {
@@ -88,16 +89,27 @@ export default function EventPage() {
     setExpandedMarketId(prev => prev === marketId ? null : marketId)
   }
 
+  const scrollToSidebar = () => {
+    const el = document.getElementById('order-sidebar')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setSidebarPulse(true)
+      setTimeout(() => setSidebarPulse(false), 1500)
+    }
+  }
+
   const handleQuickBuy = (e: React.MouseEvent, marketId: string) => {
     e.stopPropagation()
     setSelectedMarketId(marketId)
     setSidebarAction('buy')
+    scrollToSidebar()
   }
 
   const handleQuickSell = (e: React.MouseEvent, marketId: string) => {
     e.stopPropagation()
     setSelectedMarketId(marketId)
     setSidebarAction('sell')
+    scrollToSidebar()
   }
 
   if (loading) {
@@ -260,7 +272,7 @@ export default function EventPage() {
         </div>
 
         {/* Sidebar — Order Entry for Selected Outcome */}
-        <div className="space-y-6">
+        <div id="order-sidebar" className={`space-y-6 transition-all duration-500 ${sidebarPulse ? 'ring-2 ring-green-500/50 rounded-xl' : ''}`}>
           {selectedMarket && selectedMarket.status !== 'resolved' ? (
             <>
               <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
