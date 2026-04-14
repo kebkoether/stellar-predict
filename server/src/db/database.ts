@@ -63,7 +63,10 @@ export class DatabaseClient {
         created_at TEXT NOT NULL,
         resolution_time TEXT NOT NULL,
         resolved_outcome_index INTEGER,
-        created_by TEXT NOT NULL
+        created_by TEXT NOT NULL,
+        category TEXT,
+        event_id TEXT,
+        event_title TEXT
       )
     `);
 
@@ -227,8 +230,9 @@ export class DatabaseClient {
       `INSERT INTO markets (
         id, question, description, outcomes, status,
         collateral_token_code, collateral_token_issuer,
-        created_at, resolution_time, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        created_at, resolution_time, created_by,
+        category, event_id, event_title
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         market.id,
         market.question,
@@ -240,6 +244,9 @@ export class DatabaseClient {
         market.createdAt.toISOString(),
         market.resolutionTime.toISOString(),
         market.createdBy,
+        market.category || null,
+        market.eventId || null,
+        market.eventTitle || null,
       ]
     );
   }
@@ -277,6 +284,9 @@ export class DatabaseClient {
       resolutionTime: new Date(row.resolution_time),
       resolvedOutcomeIndex: row.resolved_outcome_index,
       createdBy: row.created_by,
+      category: row.category || undefined,
+      eventId: row.event_id || undefined,
+      eventTitle: row.event_title || undefined,
     };
   }
 

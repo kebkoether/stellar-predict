@@ -62,6 +62,9 @@ export interface Market {
   resolutionTime: Date;
   resolvedOutcomeIndex?: number; // only set when status is 'resolved'
   createdBy: string; // userId of market creator
+  category?: string; // e.g. 'Politics', 'Crypto', 'Sports'
+  eventId?: string; // groups multiple markets under one event (multi-outcome)
+  eventTitle?: string; // display title for the event group
 }
 
 /**

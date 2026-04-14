@@ -90,7 +90,7 @@ export default function AdminPage() {
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Shield className="w-6 h-6" /> Stellar Hedge Admin
+          <Shield className="w-6 h-6" /> Stellar (H)edge Admin
         </h1>
         <button onClick={loadData} disabled={loading}
           className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded flex items-center gap-2 text-sm">

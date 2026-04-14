@@ -12,13 +12,14 @@ interface MarketCardProps {
   resolvedOutcomeIndex?: number
   resolutionTime?: string
   resolutionDate?: string
-  // These come from enriched data (when we have trades)
   yesPrice?: number
   noPrice?: number
   volume?: number
   category?: string
   yesPercentage?: number
   yesProbability?: number
+  eventId?: string
+  eventTitle?: string
 }
 
 export default function MarketCard({

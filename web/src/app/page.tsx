@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { Search, Filter, Activity, CheckCircle, LayoutGrid } from 'lucide-react'
 import MarketCard from '@/components/MarketCard'
+import EventCard from '@/components/EventCard'
 import { useMarkets } from '@/hooks/useMarket'
 
 const CATEGORIES = ['All', 'Politics', 'Crypto', 'Sports', 'Science', 'Tech', 'Entertainment', 'Business']
@@ -26,6 +27,8 @@ interface Market {
   status?: string
   resolvedOutcomeIndex?: number
   outcomes?: string[]
+  eventId?: string
+  eventTitle?: string
 }
 
 export default function Home() {
@@ -68,6 +71,25 @@ export default function Home() {
   const activeCt = useMemo(() => (markets as Market[]).filter(m => m.status !== 'resolved').length, [markets])
   const resolvedCt = useMemo(() => (markets as Market[]).filter(m => m.status === 'resolved').length, [markets])
 
+  // Group event markets together, keep standalone markets separate
+  const { standaloneMarkets, eventGroups } = useMemo(() => {
+    const standalone: Market[] = []
+    const events = new Map<string, { title: string; category: string; resolutionDate: string; markets: Market[] }>()
+
+    for (const m of filteredMarkets) {
+      if (m.eventId && m.eventTitle) {
+        if (!events.has(m.eventId)) {
+          events.set(m.eventId, { title: m.eventTitle, category: m.category || 'Sports', resolutionDate: m.resolutionDate || '', markets: [] })
+        }
+        events.get(m.eventId)!.markets.push(m)
+      } else {
+        standalone.push(m)
+      }
+    }
+
+    return { standaloneMarkets: standalone, eventGroups: Array.from(events.entries()) }
+  }, [filteredMarkets])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Hero Section */}
@@ -79,7 +101,7 @@ export default function Home() {
               Trade Tomorrow, Today
             </h1>
             <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-              Explore prediction markets on Stellar. Buy shares in events you believe will happen.
+              Put your money where your mouth is. On-chain prediction markets — settled on Stellar, backed by USDC.
             </p>
           </div>
 
@@ -111,7 +133,11 @@ export default function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredMarkets.slice(0, 6).map((market) => (
+                {/* Show event cards + standalone in trending */}
+                {eventGroups.slice(0, 2).map(([eventId, group]) => (
+                  <EventCard key={eventId} eventId={eventId} eventTitle={group.title} markets={group.markets} category={group.category} resolutionDate={group.resolutionDate} />
+                ))}
+                {standaloneMarkets.slice(0, 6 - Math.min(eventGroups.length, 2)).map((market) => (
                   <MarketCard key={market.id} {...market} />
                 ))}
               </div>
@@ -198,7 +224,19 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-              {filteredMarkets.map((market) => (
+              {/* Multi-outcome event cards first */}
+              {eventGroups.map(([eventId, group]) => (
+                <EventCard
+                  key={eventId}
+                  eventId={eventId}
+                  eventTitle={group.title}
+                  markets={group.markets}
+                  category={group.category}
+                  resolutionDate={group.resolutionDate}
+                />
+              ))}
+              {/* Standalone binary markets */}
+              {standaloneMarkets.map((market) => (
                 <MarketCard key={market.id} {...market} />
               ))}
             </div>

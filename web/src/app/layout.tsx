@@ -4,8 +4,8 @@ import Navbar from '@/components/Navbar'
 import { WalletProvider } from '@/context/WalletContext'
 
 export const metadata: Metadata = {
-  title: 'Stellar Hedge — Prediction Markets on Stellar',
-  description: 'Trade the future. Prediction markets settled on the Stellar network.',
+  title: 'Stellar (H)edge — Prediction Markets on Stellar',
+  description: 'Hedge your conviction. Prediction markets settled on-chain.',
   viewport: 'width=device-width, initial-scale=1',
   icons: {
     icon: '/favicon.svg',
@@ -62,7 +62,7 @@ export default function RootLayout({
                 </div>
               </div>
               <div className="border-t border-slate-800 pt-8 text-center text-slate-400 text-sm">
-                <p>&copy; 2026 Stellar Hedge. All rights reserved. Powered by Stellar.</p>
+                <p>&copy; 2026 Stellar (H)edge. All rights reserved. Powered by Stellar.</p>
               </div>
             </div>
           </footer>
