@@ -206,25 +206,25 @@ export default function DepositWithdrawModal({
         throw new Error(`Insufficient balance. You have $${balance.available.toFixed(2)} available`)
       }
 
-      // Step 1: Get a nonce from the backend
+      // Step 1: Get a nonce + unsigned auth transaction from the backend
       setSuccess('Requesting authorization...')
       const nonceRes = await fetch(`${API_BASE}/auth/nonce/${publicKey}`)
-      if (!nonceRes.ok) throw new Error('Failed to get authorization nonce')
-      const { nonce } = await nonceRes.json()
+      if (!nonceRes.ok) {
+        const errData = await nonceRes.json().catch(() => ({}))
+        throw new Error(errData.error || 'Failed to get authorization nonce')
+      }
+      const { nonce, xdr } = await nonceRes.json()
 
-      // Step 2: Sign the nonce with Freighter (proves wallet ownership)
+      // Step 2: Sign the auth tx with Freighter (proves wallet ownership)
+      // This tx is NEVER submitted — it's purely for verification
       setSuccess('Please approve the withdrawal in Freighter...')
       const freighterApi = await import('@stellar/freighter-api')
 
-      // signMessage returns a base64-encoded signature
-      let signature: string
+      let signedXdr: string
       try {
-        const signResult = await (freighterApi as any).signMessage(nonce, {
+        signedXdr = await freighterApi.signTransaction(xdr, {
           networkPassphrase: 'Test SDF Network ; September 2015',
-          address: publicKey,
         })
-        // Handle both old (string) and new (object) Freighter API responses
-        signature = typeof signResult === 'string' ? signResult : signResult?.signedMessage || signResult?.signature || signResult
       } catch (signErr: any) {
         if (signErr?.message?.includes('User declined') || signErr?.message?.includes('cancelled')) {
           throw new Error('Withdrawal cancelled — you declined in Freighter')
@@ -232,12 +232,12 @@ export default function DepositWithdrawModal({
         throw signErr
       }
 
-      // Step 3: Submit withdrawal with signed nonce
+      // Step 3: Submit withdrawal with signed auth tx
       setSuccess('Processing withdrawal...')
       const res = await fetch(`${API_BASE}/users/${publicKey}/withdraw`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: withdrawAmount, nonce, signature }),
+        body: JSON.stringify({ amount: withdrawAmount, nonce, signature: signedXdr }),
       })
 
       if (!res.ok) {

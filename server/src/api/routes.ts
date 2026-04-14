@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { Database } from '../db/database';
 import { MatchingEngine } from '../engine/matching';
+import { config } from '../config';
 import { Order, Market } from '../types';
 
 // In-memory nonce store: nonce → { userId, createdAt }
@@ -18,12 +19,35 @@ function cleanExpiredNonces() {
   }
 }
 
-function verifySignature(publicKey: string, nonce: string, signatureBase64: string): boolean {
+/**
+ * Verify a signed auth transaction:
+ * - Deserialize the XDR
+ * - Check that the memo matches the expected nonce
+ * - Check that it was signed by the expected public key
+ */
+function verifySignedAuthTx(publicKey: string, nonce: string, signedXdr: string): boolean {
   try {
+    const tx = StellarSdk.TransactionBuilder.fromXDR(
+      signedXdr,
+      StellarSdk.Networks.TESTNET
+    ) as StellarSdk.Transaction;
+
+    // Check memo matches nonce (we truncate nonce to 28 bytes for memo)
+    const expectedMemo = nonce.slice(0, 28);
+    if (tx.memo.type !== 'text' || (tx.memo as any).value !== expectedMemo) {
+      return false;
+    }
+
+    // Verify the transaction was signed by the user's keypair
     const keypair = StellarSdk.Keypair.fromPublicKey(publicKey);
-    const messageBuffer = Buffer.from(nonce, 'utf-8');
-    const signatureBuffer = Buffer.from(signatureBase64, 'base64');
-    return keypair.verify(messageBuffer, signatureBuffer);
+    const txHash = tx.hash();
+    return tx.signatures.some(sig => {
+      try {
+        return keypair.verify(txHash, sig.signature());
+      } catch {
+        return false;
+      }
+    });
   } catch {
     return false;
   }
@@ -494,15 +518,43 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
   });
 
   /**
-   * AUTH — generate a nonce for signature-based withdrawal auth
-   * Frontend calls this, then asks Freighter to sign the nonce,
-   * then sends the signature with the withdraw request.
+   * AUTH — generate a nonce + unsigned auth transaction for withdrawal auth.
+   * Frontend signs the tx with Freighter (using signTransaction, which works),
+   * then sends the signed XDR back with the withdraw request.
+   * The tx is NEVER submitted — it's purely for cryptographic proof of wallet ownership.
    */
-  router.get('/api/auth/nonce/:userId', (req: Request, res: Response) => {
-    cleanExpiredNonces();
-    const nonce = `stellar-hedge:withdraw:${req.params.userId}:${uuidv4()}:${Date.now()}`;
-    nonceStore.set(nonce, { userId: req.params.userId, createdAt: Date.now() });
-    res.json({ nonce });
+  router.get('/api/auth/nonce/:userId', async (req: Request, res: Response) => {
+    try {
+      cleanExpiredNonces();
+      const userId = req.params.userId;
+      const nonce = `sh:wd:${uuidv4().slice(0, 20)}`;
+      nonceStore.set(nonce, { userId, createdAt: Date.now() });
+
+      // Build a dummy auth tx: source = user, memo = nonce, one no-op manageData
+      if (!settler) {
+        return res.status(503).json({ error: 'Settlement not configured' });
+      }
+      const horizonUrl = config.stellar.horizonUrl;
+      const server = new StellarSdk.Horizon.Server(horizonUrl);
+      const account = await server.loadAccount(userId);
+      const networkPassphrase = StellarSdk.Networks.TESTNET;
+
+      const tx = new StellarSdk.TransactionBuilder(account, {
+        fee: StellarSdk.BASE_FEE,
+        networkPassphrase,
+      })
+        .addOperation(StellarSdk.Operation.manageData({
+          name: 'auth',
+          value: 'withdrawal',
+        }))
+        .addMemo(StellarSdk.Memo.text(nonce.slice(0, 28)))
+        .setTimeout(300)
+        .build();
+
+      res.json({ nonce, xdr: tx.toXDR() });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
   });
 
   /**
@@ -539,8 +591,8 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
         return res.status(401).json({ error: 'Nonce expired' });
       }
 
-      // Verify cryptographic signature
-      if (!verifySignature(userId, nonce, signature)) {
+      // Verify the signed auth transaction
+      if (!verifySignedAuthTx(userId, nonce, signature)) {
         return res.status(401).json({ error: 'Invalid signature — wallet verification failed' });
       }
 
