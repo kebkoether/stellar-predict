@@ -28,8 +28,17 @@ const REPRICE_THRESHOLD = parseFloat(process.env.REPRICE_THRESHOLD || '0.12'); /
 
 // Map your local marketId (UUID) → Polymarket slug.
 // Find slugs at https://polymarket.com/event/<slug>
+// NOTE: UUIDs are generated at seed time — if you reseed, update these!
 const POLYMARKET_SLUGS: Record<string, string> = {
-  // 'your-market-uuid-here': 'will-bitcoin-exceed-200k-by-end-of-2026',
+  // ── NBA Championship 2026 ──
+  '15ae34d9-5c4e-400c-a04b-beacc286b38b': 'will-the-oklahoma-city-thunder-win-the-2026-nba-finals',
+  '5a955f07-e36d-4036-b153-02bb7591bb71': 'will-the-boston-celtics-win-the-2026-nba-finals',
+  '377b3478-c05d-46d2-9e08-f219be410745': 'will-the-cleveland-cavaliers-win-the-2026-nba-finals',
+  // ── FIFA World Cup 2026 ──
+  'bf581c45-757d-440a-879b-8f29901af6cd': 'will-brazil-win-the-2026-fifa-world-cup-183',
+  '5f12dfbd-ae9f-4d83-9ee7-c55a6939a515': 'will-france-win-the-2026-fifa-world-cup-924',
+  '46b73710-67d1-432e-88c6-66bd425898f4': 'will-argentina-win-the-2026-fifa-world-cup-245',
+  'ad21f33b-4f38-4705-8320-a0c1dfab1b5d': 'will-england-win-the-2026-fifa-world-cup-937',
 };
 
 // Track the last price we quoted, so we only cancel + re-quote when divergence exceeds the threshold
@@ -45,16 +54,20 @@ async function fetchPolymarketPrice(slug: string): Promise<PmPrice | null> {
   try {
     const res = await fetch(`https://gamma-api.polymarket.com/markets?slug=${slug}`);
     if (!res.ok) return null;
-    const data: any[] = await res.json();
+    const data = (await res.json()) as any[];
     if (!data.length) return null;
     const market = data[0];
-    // Polymarket outcomes array with prices
-    const outcomes: any[] = market.outcomes || [];
-    const yesOutcome = outcomes.find(o => o.title?.toLowerCase() === 'yes');
-    const noOutcome = outcomes.find(o => o.title?.toLowerCase() === 'no');
-    if (!yesOutcome || !noOutcome) return null;
-    const yes = parseFloat(yesOutcome.price);
-    const no = parseFloat(noOutcome.price);
+
+    // Gamma API returns outcomePrices as a JSON string array: ["0.425", "0.575"]
+    // Index 0 = YES price, Index 1 = NO price
+    let prices = market.outcomePrices;
+    if (typeof prices === 'string') {
+      prices = JSON.parse(prices);
+    }
+    if (!Array.isArray(prices) || prices.length < 2) return null;
+
+    const yes = parseFloat(prices[0]);
+    const no = parseFloat(prices[1]);
     if (isNaN(yes) || isNaN(no)) return null;
     return { yes, no };
   } catch (e) {
@@ -67,7 +80,7 @@ async function cancelOracleOrders(marketId: string): Promise<void> {
   try {
     const res = await fetch(`${API_BASE}/users/${ORACLE_USER}/orders`);
     if (!res.ok) return;
-    const orders: any[] = await res.json();
+    const orders = (await res.json()) as any[];
     const open = orders.filter(o => o.marketId === marketId && o.status === 'open');
     await Promise.all(open.map(o =>
       fetch(`${API_BASE}/markets/${marketId}/orders/${o.id}`, { method: 'DELETE' })
@@ -99,7 +112,7 @@ async function placeOrder(
       }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = (await res.json().catch(() => ({}))) as any;
       console.error(`[oracle] Order rejected (${side} YES@${price}):`, err.error);
       return false;
     }
@@ -181,7 +194,7 @@ async function main(): Promise<void> {
   // Ensure oracle has a balance (seed if first run) — in prod you'd deposit real USDC
   try {
     const res = await fetch(`${API_BASE}/users/${ORACLE_USER}/balances`);
-    const bal = await res.json();
+    const bal = (await res.json()) as any;
     if (bal.available < 1000) {
       console.log(`[oracle] Low balance ${bal.available}, seeding via admin endpoint`);
       await fetch(`${API_BASE}/admin/users/${ORACLE_USER}/set-balance`, {

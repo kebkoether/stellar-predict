@@ -6,6 +6,7 @@ COPY server/package*.json ./
 RUN npm ci
 COPY server/ .
 RUN npx tsc
+RUN npx tsc -p tsconfig.oracle.json
 
 # ─── Stage 2: Build Web ───
 FROM node:20-slim AS web-build
@@ -32,6 +33,7 @@ WORKDIR /app
 
 # Copy server build
 COPY --from=server-build /app/server/dist ./server/dist
+COPY --from=server-build /app/server/dist-oracle ./server/dist-oracle
 COPY --from=server-build /app/server/node_modules ./server/node_modules
 COPY --from=server-build /app/server/package.json ./server/
 
