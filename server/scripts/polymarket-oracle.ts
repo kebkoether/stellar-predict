@@ -23,7 +23,7 @@ const ORACLE_USER = process.env.ORACLE_USER || 'oracle-bot';
 const SPREAD_CENTS = parseInt(process.env.SPREAD_CENTS || '2'); // half-spread, each side
 const QUOTE_SIZE = parseFloat(process.env.QUOTE_SIZE || '50'); // shares per side
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '45000');
-const MAX_DIVERGENCE = 0.1; // if Polymarket price > 95¢ or < 5¢ pull quotes (edge risk)
+const MAX_DIVERGENCE = 0.03; // if Polymarket price > 97¢ or < 3¢ pull quotes (edge risk)
 const REPRICE_THRESHOLD = parseFloat(process.env.REPRICE_THRESHOLD || '0.12'); // 12% — only requote when mispriced by more than this
 
 // Map question keywords → Polymarket slug.

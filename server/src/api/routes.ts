@@ -172,16 +172,17 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
   });
 
   // Get all markets — enriched with live orderbook prices + volume
+  // For multi-outcome event groups, prices are normalized to sum to $1.00
   router.get('/api/markets', (req: Request, res: Response) => {
     try {
       const markets = db.getAllMarkets();
 
-      // Enrich each market with best bid/ask from the orderbook
-      const enriched = markets.map(m => {
-        const book = matching.getOrderBook(m.id, 0); // outcomeIndex 0 = YES
+      // Step 1: Get raw orderbook mid price for each market
+      const rawPrices = new Map<string, number | null>();
+      for (const m of markets) {
+        const book = matching.getOrderBook(m.id, 0);
         const bestBid = book.bids?.[0]?.price ?? null;
         const bestAsk = book.asks?.[0]?.price ?? null;
-        // Mid price: average of best bid & ask, or whichever is available
         let yesPrice: number | null = null;
         if (bestBid !== null && bestAsk !== null) {
           yesPrice = (bestBid + bestAsk) / 2;
@@ -190,17 +191,72 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
         } else if (bestAsk !== null) {
           yesPrice = bestAsk;
         }
-        const noPrice = yesPrice !== null ? 1 - yesPrice : null;
+        rawPrices.set(m.id, yesPrice);
+      }
 
-        // Volume = total quantity traded in this market
+      // Step 2: Normalize prices within event groups so they sum to $1.00
+      // Group markets by eventId
+      const eventGroups = new Map<string, Market[]>();
+      for (const m of markets) {
+        if (m.eventId) {
+          if (!eventGroups.has(m.eventId)) eventGroups.set(m.eventId, []);
+          eventGroups.get(m.eventId)!.push(m);
+        }
+      }
+
+      const normalizedPrices = new Map<string, number>();
+      for (const [eventId, group] of eventGroups) {
+        // Get raw prices for markets that have orderbook data
+        const withPrices: Array<{ id: string; price: number }> = [];
+        const withoutPrices: string[] = [];
+        for (const m of group) {
+          const raw = rawPrices.get(m.id);
+          if (raw !== null) {
+            withPrices.push({ id: m.id, price: raw! });
+          } else {
+            withoutPrices.push(m.id);
+          }
+        }
+
+        // Calculate total of known prices
+        const knownSum = withPrices.reduce((s, p) => s + p.price, 0);
+
+        if (withoutPrices.length > 0 && knownSum < 1) {
+          // Distribute remaining probability equally among unpriced markets
+          const remaining = Math.max(0, 1 - knownSum);
+          const perUnpriced = remaining / withoutPrices.length;
+          for (const p of withPrices) normalizedPrices.set(p.id, p.price);
+          for (const id of withoutPrices) normalizedPrices.set(id, perUnpriced);
+        } else {
+          // All have prices (or sum >= 1) — normalize proportionally to sum to 1
+          const total = withPrices.length > 0 ? knownSum : group.length;
+          if (total > 0 && withPrices.length === group.length) {
+            for (const p of withPrices) normalizedPrices.set(p.id, p.price / total);
+          } else {
+            // Fallback: equal distribution
+            const equal = 1 / group.length;
+            for (const m of group) normalizedPrices.set(m.id, equal);
+          }
+        }
+      }
+
+      // Step 3: Build enriched response
+      const enriched = markets.map(m => {
+        const rawPrice = rawPrices.get(m.id) ?? null;
+        // Use normalized price for event group markets, raw price for standalone
+        const yesPrice = normalizedPrices.has(m.id)
+          ? normalizedPrices.get(m.id)!
+          : (rawPrice ?? 0.5);
+        const noPrice = 1 - yesPrice;
+
         const trades = db.getMarketTrades(m.id, 10000);
         const volume = trades.reduce((sum, t) => sum + t.price * t.quantity, 0);
 
         return {
           ...m,
-          yesPrice: yesPrice ?? 0.5,
-          noPrice: noPrice ?? 0.5,
-          yesProbability: yesPrice !== null ? Math.round(yesPrice * 100) : 50,
+          yesPrice: Math.round(yesPrice * 100) / 100,
+          noPrice: Math.round(noPrice * 100) / 100,
+          yesProbability: Math.round(yesPrice * 100),
           volume,
           resolutionDate: m.resolutionTime.toISOString(),
         };
