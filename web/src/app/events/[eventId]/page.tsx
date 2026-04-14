@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { Clock, Activity, ChevronRight } from 'lucide-react'
+import { Clock, Activity, ChevronDown, ChevronUp } from 'lucide-react'
 import OrderEntry from '@/components/OrderEntry'
+import InlineOrderBook from '@/components/InlineOrderBook'
 import { useWalletContext } from '@/context/WalletContext'
 
 interface Market {
@@ -35,13 +36,15 @@ function extractShortName(question: string): string {
 export default function EventPage() {
   const params = useParams()
   const eventId = params.eventId as string
-  const { connected } = useWalletContext()
+  const { connected, publicKey } = useWalletContext()
 
   const [markets, setMarkets] = useState<Market[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null)
+  const [expandedMarketId, setExpandedMarketId] = useState<string | null>(null)
   const [eventTitle, setEventTitle] = useState('')
   const [category, setCategory] = useState('')
+  const [sidebarAction, setSidebarAction] = useState<'buy' | 'sell'>('buy')
 
   const fetchMarkets = useCallback(async () => {
     try {
@@ -77,6 +80,25 @@ export default function EventPage() {
   const resolutionDate = selectedMarket
     ? new Date(selectedMarket.resolutionDate || selectedMarket.resolutionTime)
     : null
+
+  const handleOutcomeClick = (marketId: string) => {
+    setSelectedMarketId(marketId)
+    setSidebarAction('buy')
+    // Toggle orderbook expansion
+    setExpandedMarketId(prev => prev === marketId ? null : marketId)
+  }
+
+  const handleQuickBuy = (e: React.MouseEvent, marketId: string) => {
+    e.stopPropagation()
+    setSelectedMarketId(marketId)
+    setSidebarAction('buy')
+  }
+
+  const handleQuickSell = (e: React.MouseEvent, marketId: string) => {
+    e.stopPropagation()
+    setSelectedMarketId(marketId)
+    setSidebarAction('sell')
+  }
 
   if (loading) {
     return (
@@ -128,74 +150,112 @@ export default function EventPage() {
         {/* Outcomes List — Main Content */}
         <div className="lg:col-span-2">
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-700">
-              <h2 className="text-lg font-semibold text-white">Select an outcome to trade</h2>
+            {/* Table header */}
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-6 py-3 border-b border-slate-700 text-xs text-slate-400 uppercase tracking-widest">
+              <span>Outcome</span>
+              <span className="w-16 text-center">Chance</span>
+              <span className="w-20 text-center">Buy Yes</span>
+              <span className="w-20 text-center">Buy No</span>
             </div>
 
             <div className="divide-y divide-slate-700/50">
               {markets.map((m) => {
                 const pct = m.yesProbability ?? Math.round((m.yesPrice ?? 0.5) * 100)
                 const price = m.yesPrice ?? 0.5
+                const yesPrice = Math.round(price * 100)
+                const noPrice = 100 - yesPrice
                 const shortName = extractShortName(m.question)
                 const isSelected = m.id === selectedMarketId
+                const isExpanded = m.id === expandedMarketId
 
                 return (
-                  <div
-                    key={m.id}
-                    onClick={() => setSelectedMarketId(m.id)}
-                    className={`flex items-center justify-between px-6 py-4 cursor-pointer transition-all ${
-                      isSelected
-                        ? 'bg-green-900/20 border-l-4 border-l-green-500'
-                        : 'hover:bg-slate-700/30 border-l-4 border-l-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      {/* Probability circle */}
-                      <div className={`flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center border-2 ${
-                        isSelected ? 'border-green-500/50 bg-green-900/20' : 'border-slate-600 bg-slate-800'
-                      }`}>
-                        <span className={`text-sm font-bold ${isSelected ? 'text-green-400' : 'text-slate-300'}`}>
+                  <div key={m.id}>
+                    {/* Outcome Row */}
+                    <div
+                      onClick={() => handleOutcomeClick(m.id)}
+                      className={`grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-6 py-4 cursor-pointer transition-all ${
+                        isSelected
+                          ? 'bg-slate-700/30'
+                          : 'hover:bg-slate-700/20'
+                      }`}
+                    >
+                      {/* Name + probability bar */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-medium truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                            {shortName}
+                          </p>
+                          <div className="w-full bg-slate-700 rounded-full h-1 mt-1.5 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${isSelected ? 'bg-green-500' : 'bg-slate-500'}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Chance */}
+                      <div className="w-16 text-center">
+                        <span className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-slate-300'}`}>
                           {pct}%
                         </span>
                       </div>
 
-                      {/* Name + bar */}
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-medium truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
-                          {shortName}
-                        </p>
-                        <div className="w-full bg-slate-700 rounded-full h-1.5 mt-2 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${isSelected ? 'bg-green-500' : 'bg-slate-500'}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
+                      {/* Buy Yes button */}
+                      <button
+                        onClick={(e) => handleQuickBuy(e, m.id)}
+                        className={`w-20 py-1.5 rounded-lg text-sm font-bold transition border ${
+                          isSelected && sidebarAction === 'buy'
+                            ? 'bg-green-600 border-green-500 text-white'
+                            : 'bg-green-900/30 border-green-700/50 text-green-400 hover:bg-green-900/50 hover:border-green-600'
+                        }`}
+                      >
+                        {yesPrice}¢
+                      </button>
+
+                      {/* Buy No button */}
+                      <button
+                        onClick={(e) => handleQuickSell(e, m.id)}
+                        className={`w-20 py-1.5 rounded-lg text-sm font-bold transition border ${
+                          isSelected && sidebarAction === 'sell'
+                            ? 'bg-red-600 border-red-500 text-white'
+                            : 'bg-red-900/30 border-red-700/50 text-red-400 hover:bg-red-900/50 hover:border-red-600'
+                        }`}
+                      >
+                        {noPrice}¢
+                      </button>
                     </div>
 
-                    {/* Price + arrow */}
-                    <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                      <span className={`text-lg font-mono font-bold ${isSelected ? 'text-green-400' : 'text-slate-300'}`}>
-                        {Math.round(price * 100)}¢
-                      </span>
-                      <ChevronRight className={`w-5 h-5 ${isSelected ? 'text-green-400' : 'text-slate-600'}`} />
-                    </div>
+                    {/* Expanded Orderbook */}
+                    {isExpanded && (
+                      <div className="px-6 pb-4 bg-slate-800/80 border-t border-slate-700/50">
+                        <div className="flex items-center justify-between py-2">
+                          <span className="text-xs text-slate-400 uppercase tracking-widest">
+                            Order Book — {shortName}
+                          </span>
+                          <button
+                            onClick={() => setExpandedMarketId(null)}
+                            className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1"
+                          >
+                            <ChevronUp className="w-3 h-3" />
+                            Collapse
+                          </button>
+                        </div>
+                        <InlineOrderBook marketId={m.id} />
+                        <div className="mt-2 text-center">
+                          <Link
+                            href={`/markets/${m.id}`}
+                            className="text-xs text-green-400 hover:underline"
+                          >
+                            View full market details &rarr;
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })}
             </div>
-          </div>
-
-          {/* Link to individual market pages */}
-          <div className="mt-4 text-center">
-            <p className="text-xs text-slate-500">
-              Click any outcome above to trade, or{' '}
-              {selectedMarket && (
-                <Link href={`/markets/${selectedMarket.id}`} className="text-green-400 hover:underline">
-                  view full orderbook for {extractShortName(selectedMarket.question)} →
-                </Link>
-              )}
-            </p>
           </div>
         </div>
 
@@ -215,6 +275,8 @@ export default function EventPage() {
                 onOrderPlaced={() => {
                   setTimeout(() => fetchMarkets(), 1000)
                 }}
+                initialYesPrice={selectedMarket.yesPrice}
+                initialAction={sidebarAction}
               />
             </>
           ) : (

@@ -338,6 +338,8 @@ export default function MarketDetail() {
                   window.location.reload()
                 }, 1000)
               }}
+              initialYesPrice={midPrice / 100}
+              initialAction="buy"
             />
           ) : (
             <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 text-center">
