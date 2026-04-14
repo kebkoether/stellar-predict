@@ -21,26 +21,27 @@ const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '60000');
 // At startup, the oracle fetches all local markets and auto-matches by keyword.
 const KEYWORD_TO_SLUG: Record<string, string> = {
   // NBA Champion 2026
-  'thunder': 'will-the-oklahoma-city-thunder-win-the-2026-nba-finals',
-  'celtics': 'will-the-boston-celtics-win-the-2026-nba-finals',
-  'cavaliers': 'will-the-cleveland-cavaliers-win-the-2026-nba-finals',
+  'thunder win the 2026 nba': 'will-the-oklahoma-city-thunder-win-the-2026-nba-finals',
+  'celtics win the 2026 nba': 'will-the-boston-celtics-win-the-2026-nba-finals',
+  'cavaliers win the 2026 nba': 'will-the-cleveland-cavaliers-win-the-2026-nba-finals',
 
   // FIFA World Cup 2026
   'brazil win the 2026 fifa': 'will-brazil-win-the-2026-fifa-world-cup-183',
   'france win the 2026 fifa': 'will-france-win-the-2026-fifa-world-cup-924',
   'argentina win the 2026 fifa': 'will-argentina-win-the-2026-fifa-world-cup-245',
   'england win the 2026 fifa': 'will-england-win-the-2026-fifa-world-cup-937',
+  'spain win the 2026 fifa': 'will-spain-win-the-2026-fifa-world-cup-963',
 
   // 2028 US Presidential Election
-  'jd vance': 'will-jd-vance-win-the-2028-us-presidential-election',
-  'gavin newsom': 'will-gavin-newsom-win-the-2028-us-presidential-election',
-  'ocasio-cortez': 'will-alexandria-ocasio-cortez-win-the-2028-us-presidential-election',
-  'kamala harris': 'will-kamala-harris-win-the-2028-us-presidential-election',
-  'tucker carlson': 'will-tucker-carlson-win-the-2028-us-presidential-election',
+  'jd vance win the 2028': 'will-jd-vance-win-the-2028-us-presidential-election',
+  'gavin newsom win the 2028': 'will-gavin-newsom-win-the-2028-us-presidential-election',
+  'ocasio-cortez win the 2028': 'will-alexandria-ocasio-cortez-win-the-2028-us-presidential-election',
+  'kamala harris win the 2028': 'will-kamala-harris-win-the-2028-us-presidential-election',
+  'tucker carlson win the 2028': 'will-tucker-carlson-win-the-2028-us-presidential-election',
 
   // Peru Presidential Election 2026
   'keiko fujimori': 'will-keiko-fujimori-win-the-2026-peruvian-presidential-election',
-  'roberto sánchez palomino': 'will-roberto-snchez-palomino-win-the-2026-peruvian-presidential-election',
+  'sánchez palomino': 'will-roberto-snchez-palomino-win-the-2026-peruvian-presidential-election',
   'jorge nieto': 'will-jorge-nieto-win-the-2026-peruvian-presidential-election',
 
   // Eurovision 2026
@@ -48,6 +49,29 @@ const KEYWORD_TO_SLUG: Record<string, string> = {
   'israel win eurovision': 'will-israel-win-eurovision-2026',
   'sweden win eurovision': 'will-sweden-win-eurovision-2026',
   'italy win eurovision': 'will-italy-win-eurovision-2026',
+
+  // Men's Wimbledon 2026
+  'sinner win 2026 men': 'will-jannik-sinner-be-the-2026-mens-wimbledon-winner',
+  'alcaraz win 2026 men': 'will-carlos-alcaraz-be-the-2026-mens-wimbledon-winner',
+  'djokovic win 2026 men': 'will-novak-djokovic-be-the-2026-mens-wimbledon-winner',
+
+  // Women's Wimbledon 2026
+  'sabalenka win 2026 women': 'will-aryna-sabalenka-be-the-2026-womens-wimbledon-winner',
+  'anisimova win 2026 women': 'will-amanda-anisimova-be-the-2026-womens-wimbledon-winner',
+  'gauff win 2026 women': 'will-coco-gauff-be-the-2026-womens-wimbledon-winner',
+
+  // 2026 World Series
+  'dodgers win the 2026 world series': 'will-the-los-angeles-dodgers-win-the-2026-world-series',
+  'yankees win the 2026 world series': 'will-the-new-york-yankees-win-the-2026-world-series',
+  'braves win the 2026 world series': 'will-the-atlanta-braves-win-the-2026-world-series',
+  'mets win the 2026 world series': 'will-the-new-york-mets-win-the-2026-world-series',
+
+  // Hungary PM
+  'péter magyar become': 'will-the-next-prime-minister-of-hungary-be-pter-magyar',
+  'orbán remain pm': 'will-the-next-prime-minister-of-hungary-be-viktor-orbn',
+
+  // TikTok acquisition
+  'microsoft acquire tiktok': 'will-microsoft-acquire-tiktok-637-223-119',
 };
 
 // Resolved at startup by matching local markets against KEYWORD_TO_SLUG

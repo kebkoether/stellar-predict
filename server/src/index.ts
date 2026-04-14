@@ -51,10 +51,67 @@ const DEFAULT_MARKETS: Array<{
   { question: 'Will Sweden win Eurovision 2026?', description: 'Resolves YES if Sweden wins the 2026 Eurovision Song Contest.', resolutionTime: '2026-05-24T00:00:00Z', category: 'Entertainment', eventId: 'eurovision-2026', eventTitle: 'Eurovision 2026 Winner' },
   { question: 'Will Italy win Eurovision 2026?', description: 'Resolves YES if Italy wins the 2026 Eurovision Song Contest.', resolutionTime: '2026-05-24T00:00:00Z', category: 'Entertainment', eventId: 'eurovision-2026', eventTitle: 'Eurovision 2026 Winner' },
   { question: 'Will any other country win Eurovision 2026?', description: 'Resolves YES if any country not listed above wins Eurovision 2026.', resolutionTime: '2026-05-24T00:00:00Z', category: 'Entertainment', eventId: 'eurovision-2026', eventTitle: 'Eurovision 2026 Winner' },
+
+  // ── Sports: Men's Wimbledon 2026 (4 outcomes) ──
+  { question: 'Will Jannik Sinner win 2026 Men\'s Wimbledon?', description: 'Resolves YES if Jannik Sinner wins the 2026 Wimbledon Men\'s Singles title.', resolutionTime: '2026-07-13T00:00:00Z', category: 'Sports', eventId: 'wimbledon-mens-2026', eventTitle: '2026 Men\'s Wimbledon Champion' },
+  { question: 'Will Carlos Alcaraz win 2026 Men\'s Wimbledon?', description: 'Resolves YES if Carlos Alcaraz wins the 2026 Wimbledon Men\'s Singles title.', resolutionTime: '2026-07-13T00:00:00Z', category: 'Sports', eventId: 'wimbledon-mens-2026', eventTitle: '2026 Men\'s Wimbledon Champion' },
+  { question: 'Will Novak Djokovic win 2026 Men\'s Wimbledon?', description: 'Resolves YES if Novak Djokovic wins the 2026 Wimbledon Men\'s Singles title.', resolutionTime: '2026-07-13T00:00:00Z', category: 'Sports', eventId: 'wimbledon-mens-2026', eventTitle: '2026 Men\'s Wimbledon Champion' },
+  { question: 'Will any other player win 2026 Men\'s Wimbledon?', description: 'Resolves YES if any player not listed above wins Men\'s Wimbledon 2026.', resolutionTime: '2026-07-13T00:00:00Z', category: 'Sports', eventId: 'wimbledon-mens-2026', eventTitle: '2026 Men\'s Wimbledon Champion' },
+
+  // ── Sports: Women's Wimbledon 2026 (4 outcomes) ──
+  { question: 'Will Aryna Sabalenka win 2026 Women\'s Wimbledon?', description: 'Resolves YES if Aryna Sabalenka wins the 2026 Wimbledon Women\'s Singles title.', resolutionTime: '2026-07-12T00:00:00Z', category: 'Sports', eventId: 'wimbledon-womens-2026', eventTitle: '2026 Women\'s Wimbledon Champion' },
+  { question: 'Will Amanda Anisimova win 2026 Women\'s Wimbledon?', description: 'Resolves YES if Amanda Anisimova wins the 2026 Wimbledon Women\'s Singles title.', resolutionTime: '2026-07-12T00:00:00Z', category: 'Sports', eventId: 'wimbledon-womens-2026', eventTitle: '2026 Women\'s Wimbledon Champion' },
+  { question: 'Will Coco Gauff win 2026 Women\'s Wimbledon?', description: 'Resolves YES if Coco Gauff wins the 2026 Wimbledon Women\'s Singles title.', resolutionTime: '2026-07-12T00:00:00Z', category: 'Sports', eventId: 'wimbledon-womens-2026', eventTitle: '2026 Women\'s Wimbledon Champion' },
+  { question: 'Will any other player win 2026 Women\'s Wimbledon?', description: 'Resolves YES if any player not listed above wins Women\'s Wimbledon 2026.', resolutionTime: '2026-07-12T00:00:00Z', category: 'Sports', eventId: 'wimbledon-womens-2026', eventTitle: '2026 Women\'s Wimbledon Champion' },
+
+  // ── Sports: 2026 World Series (5 outcomes) ──
+  { question: 'Will the Dodgers win the 2026 World Series?', description: 'Resolves YES if the Los Angeles Dodgers win the 2026 MLB World Series.', resolutionTime: '2026-11-01T00:00:00Z', category: 'Sports', eventId: 'world-series-2026', eventTitle: '2026 World Series Champion' },
+  { question: 'Will the Yankees win the 2026 World Series?', description: 'Resolves YES if the New York Yankees win the 2026 MLB World Series.', resolutionTime: '2026-11-01T00:00:00Z', category: 'Sports', eventId: 'world-series-2026', eventTitle: '2026 World Series Champion' },
+  { question: 'Will the Braves win the 2026 World Series?', description: 'Resolves YES if the Atlanta Braves win the 2026 MLB World Series.', resolutionTime: '2026-11-01T00:00:00Z', category: 'Sports', eventId: 'world-series-2026', eventTitle: '2026 World Series Champion' },
+  { question: 'Will the Mets win the 2026 World Series?', description: 'Resolves YES if the New York Mets win the 2026 MLB World Series.', resolutionTime: '2026-11-01T00:00:00Z', category: 'Sports', eventId: 'world-series-2026', eventTitle: '2026 World Series Champion' },
+  { question: 'Will any other team win the 2026 World Series?', description: 'Resolves YES if any team not listed above wins the 2026 World Series.', resolutionTime: '2026-11-01T00:00:00Z', category: 'Sports', eventId: 'world-series-2026', eventTitle: '2026 World Series Champion' },
+
+  // ── Politics: Next Prime Minister of Hungary (3 outcomes) ──
+  { question: 'Will Péter Magyar become the next PM of Hungary?', description: 'Resolves YES if Péter Magyar becomes the next Prime Minister of Hungary.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Politics', eventId: 'hungary-pm', eventTitle: 'Next Prime Minister of Hungary' },
+  { question: 'Will Viktor Orbán remain PM of Hungary?', description: 'Resolves YES if Viktor Orbán continues as Prime Minister of Hungary through the next government formation.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Politics', eventId: 'hungary-pm', eventTitle: 'Next Prime Minister of Hungary' },
+  { question: 'Will someone else become the next PM of Hungary?', description: 'Resolves YES if someone other than Magyar or Orbán becomes PM.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Politics', eventId: 'hungary-pm', eventTitle: 'Next Prime Minister of Hungary' },
+
+  // ── Tech: Who Acquires TikTok? (4 outcomes) ──
+  { question: 'Will Microsoft acquire TikTok?', description: 'Resolves YES if Microsoft completes an acquisition of TikTok US operations.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Tech', eventId: 'tiktok-acquirer', eventTitle: 'TikTok Acquisition' },
+  { question: 'Will Oracle acquire TikTok?', description: 'Resolves YES if Oracle completes an acquisition of TikTok US operations.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Tech', eventId: 'tiktok-acquirer', eventTitle: 'TikTok Acquisition' },
+  { question: 'Will Amazon acquire TikTok?', description: 'Resolves YES if Amazon completes an acquisition of TikTok US operations.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Tech', eventId: 'tiktok-acquirer', eventTitle: 'TikTok Acquisition' },
+  { question: 'Will TikTok be acquired by another company or not sold?', description: 'Resolves YES if TikTok is acquired by a company not listed above, or not sold at all.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Tech', eventId: 'tiktok-acquirer', eventTitle: 'TikTok Acquisition' },
+
+  // ── Sports: 2026 FIFA — extra teams for depth (expand existing event) ──
+  { question: 'Will Spain win the 2026 FIFA World Cup?', description: 'Resolves YES if Spain wins the 2026 FIFA World Cup final.', resolutionTime: '2026-07-20T00:00:00Z', category: 'Sports', eventId: 'wc-2026', eventTitle: '2026 FIFA World Cup Winner' },
+
+  // ── Tech: First Company to $5T Market Cap (4 outcomes) ──
+  { question: 'Will Apple be the first company to reach $5T market cap?', description: 'Resolves YES if Apple is the first publicly traded company to reach a $5 trillion market cap.', resolutionTime: '2027-12-31T00:00:00Z', category: 'Tech', eventId: 'first-5t-company', eventTitle: 'First Company to $5T Market Cap' },
+  { question: 'Will NVIDIA be the first company to reach $5T market cap?', description: 'Resolves YES if NVIDIA is the first publicly traded company to reach a $5 trillion market cap.', resolutionTime: '2027-12-31T00:00:00Z', category: 'Tech', eventId: 'first-5t-company', eventTitle: 'First Company to $5T Market Cap' },
+  { question: 'Will Microsoft be the first company to reach $5T market cap?', description: 'Resolves YES if Microsoft is the first publicly traded company to reach a $5 trillion market cap.', resolutionTime: '2027-12-31T00:00:00Z', category: 'Tech', eventId: 'first-5t-company', eventTitle: 'First Company to $5T Market Cap' },
+  { question: 'Will any other company reach $5T market cap first?', description: 'Resolves YES if a company other than Apple, NVIDIA, or Microsoft is the first to $5T.', resolutionTime: '2027-12-31T00:00:00Z', category: 'Tech', eventId: 'first-5t-company', eventTitle: 'First Company to $5T Market Cap' },
+
+  // ── AI: First to AGI (4 outcomes) ──
+  { question: 'Will OpenAI achieve AGI first?', description: 'Resolves YES if OpenAI is widely recognized as the first to achieve artificial general intelligence by credible AI researchers.', resolutionTime: '2030-12-31T00:00:00Z', category: 'Tech', eventId: 'first-agi', eventTitle: 'First to Achieve AGI' },
+  { question: 'Will Google DeepMind achieve AGI first?', description: 'Resolves YES if Google DeepMind is widely recognized as the first to achieve AGI.', resolutionTime: '2030-12-31T00:00:00Z', category: 'Tech', eventId: 'first-agi', eventTitle: 'First to Achieve AGI' },
+  { question: 'Will Anthropic achieve AGI first?', description: 'Resolves YES if Anthropic is widely recognized as the first to achieve AGI.', resolutionTime: '2030-12-31T00:00:00Z', category: 'Tech', eventId: 'first-agi', eventTitle: 'First to Achieve AGI' },
+  { question: 'Will no company achieve AGI before 2030?', description: 'Resolves YES if no company achieves AGI by Dec 31, 2030 as judged by expert consensus.', resolutionTime: '2030-12-31T00:00:00Z', category: 'Tech', eventId: 'first-agi', eventTitle: 'First to Achieve AGI' },
+
+  // ── Crypto: Bitcoin Year-End Price (4 outcomes) ──
+  { question: 'Will Bitcoin be above $150K on Dec 31, 2026?', description: 'Resolves YES if Bitcoin price exceeds $150,000 on any major exchange at any point on Dec 31, 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Crypto', eventId: 'btc-eoy-2026', eventTitle: 'Bitcoin Year-End 2026 Price' },
+  { question: 'Will Bitcoin be between $100K-$150K on Dec 31, 2026?', description: 'Resolves YES if Bitcoin price is between $100,000 and $150,000 at midnight UTC Dec 31, 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Crypto', eventId: 'btc-eoy-2026', eventTitle: 'Bitcoin Year-End 2026 Price' },
+  { question: 'Will Bitcoin be between $50K-$100K on Dec 31, 2026?', description: 'Resolves YES if Bitcoin price is between $50,000 and $100,000 at midnight UTC Dec 31, 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Crypto', eventId: 'btc-eoy-2026', eventTitle: 'Bitcoin Year-End 2026 Price' },
+  { question: 'Will Bitcoin be below $50K on Dec 31, 2026?', description: 'Resolves YES if Bitcoin price is below $50,000 at midnight UTC Dec 31, 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Crypto', eventId: 'btc-eoy-2026', eventTitle: 'Bitcoin Year-End 2026 Price' },
+
+  // ── Economy: Fed Rate Cuts 2026 (4 outcomes) ──
+  { question: 'Will the Fed cut rates 3+ times in 2026?', description: 'Resolves YES if the Federal Reserve cuts the federal funds rate 3 or more times during 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Economy', eventId: 'fed-cuts-2026', eventTitle: '2026 Fed Rate Cuts' },
+  { question: 'Will the Fed cut rates exactly 2 times in 2026?', description: 'Resolves YES if the Federal Reserve cuts rates exactly twice during 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Economy', eventId: 'fed-cuts-2026', eventTitle: '2026 Fed Rate Cuts' },
+  { question: 'Will the Fed cut rates exactly 1 time in 2026?', description: 'Resolves YES if the Federal Reserve cuts rates exactly once during 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Economy', eventId: 'fed-cuts-2026', eventTitle: '2026 Fed Rate Cuts' },
+  { question: 'Will the Fed hold or raise rates in 2026?', description: 'Resolves YES if the Federal Reserve does not cut rates at all during 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Economy', eventId: 'fed-cuts-2026', eventTitle: '2026 Fed Rate Cuts' },
 ];
 
 // SEED_VERSION: bump this to force a re-seed even if markets exist
-const SEED_VERSION = 4;
+const SEED_VERSION = 5;
 
 async function seedMarkets(db: Database, force = false): Promise<void> {
   const existing = db.getAllMarkets();
