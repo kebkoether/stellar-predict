@@ -127,28 +127,28 @@ export class SettlementPipeline {
 
     console.log(`Processing withdrawal ${withdrawalId.slice(0,8)}: ${userId} → ${userAddr.slice(0, 12)}... for ${amount} USDC`);
 
-    const account = await this.server.loadAccount(this.keypair.publicKey());
-    const networkPassphrase = this.network === 'testnet' ? Networks.TESTNET : Networks.PUBLIC;
-    const usdcAsset = new Asset(this.usdc.code, this.usdc.issuer);
-
-    const tx = new TransactionBuilder(account, {
-      fee: BASE_FEE,
-      networkPassphrase,
-    })
-      .addOperation(
-        Operation.payment({
-          destination: userAddr,
-          asset: usdcAsset,
-          amount: amount.toFixed(7),
-        })
-      )
-      .addMemo(StellarSdk.Memo.text(`withdraw:${userId}`))
-      .setTimeout(30)
-      .build();
-
-    tx.sign(this.keypair);
-
     try {
+      const account = await this.server.loadAccount(this.keypair.publicKey());
+      const networkPassphrase = this.network === 'testnet' ? Networks.TESTNET : Networks.PUBLIC;
+      const usdcAsset = new Asset(this.usdc.code, this.usdc.issuer);
+
+      const tx = new TransactionBuilder(account, {
+        fee: BASE_FEE,
+        networkPassphrase,
+      })
+        .addOperation(
+          Operation.payment({
+            destination: userAddr,
+            asset: usdcAsset,
+            amount: amount.toFixed(7),
+          })
+        )
+        .addMemo(StellarSdk.Memo.text(`wd:${userId.slice(0, 8)}`))
+        .setTimeout(30)
+        .build();
+
+      tx.sign(this.keypair);
+
       const result = await this.server.submitTransaction(tx);
       const hash = (result as any).hash;
 
