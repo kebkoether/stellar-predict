@@ -171,11 +171,42 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
     }
   });
 
-  // Get all markets
+  // Get all markets — enriched with live orderbook prices + volume
   router.get('/api/markets', (req: Request, res: Response) => {
     try {
       const markets = db.getAllMarkets();
-      res.json(markets);
+
+      // Enrich each market with best bid/ask from the orderbook
+      const enriched = markets.map(m => {
+        const book = matching.getOrderBook(m.id, 0); // outcomeIndex 0 = YES
+        const bestBid = book.bids?.[0]?.price ?? null;
+        const bestAsk = book.asks?.[0]?.price ?? null;
+        // Mid price: average of best bid & ask, or whichever is available
+        let yesPrice: number | null = null;
+        if (bestBid !== null && bestAsk !== null) {
+          yesPrice = (bestBid + bestAsk) / 2;
+        } else if (bestBid !== null) {
+          yesPrice = bestBid;
+        } else if (bestAsk !== null) {
+          yesPrice = bestAsk;
+        }
+        const noPrice = yesPrice !== null ? 1 - yesPrice : null;
+
+        // Volume = total quantity traded in this market
+        const trades = db.getMarketTrades(m.id, 10000);
+        const volume = trades.reduce((sum, t) => sum + t.price * t.quantity, 0);
+
+        return {
+          ...m,
+          yesPrice: yesPrice ?? 0.5,
+          noPrice: noPrice ?? 0.5,
+          yesProbability: yesPrice !== null ? Math.round(yesPrice * 100) : 50,
+          volume,
+          resolutionDate: m.resolutionTime.toISOString(),
+        };
+      });
+
+      res.json(enriched);
     } catch (error) {
       res.status(500).json({ error: 'Internal server error' });
     }
