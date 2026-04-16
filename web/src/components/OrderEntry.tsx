@@ -44,6 +44,7 @@ export default function OrderEntry({
   const [bestAsk, setBestAsk] = useState<number | null>(null)
   const [bestBid, setBestBid] = useState<number | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   // Sync initialAction from parent (e.g. when user clicks Buy/Sell buttons)
   useEffect(() => {
@@ -95,7 +96,8 @@ export default function OrderEntry({
   const costPerShare = effectivePrice / 100
   const estimatedCost = quantity * costPerShare
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Step 1: validate and show confirmation modal
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setSuccess('')
@@ -110,6 +112,12 @@ export default function OrderEntry({
       return
     }
 
+    setShowConfirm(true)
+  }
+
+  // Step 2: actually place the order after user confirms
+  const handleConfirmedSubmit = async () => {
+    setShowConfirm(false)
     setLoading(true)
 
     try {
@@ -151,12 +159,12 @@ export default function OrderEntry({
       }
 
       const result = await response.json()
-      const outcomeName = selectedOutcome === 'yes' ? (outcomes[0] || 'YES') : (outcomes[1] || 'NO')
+      const outcomeLabel = selectedOutcome === 'yes' ? (outcomes[0] || 'YES') : (outcomes[1] || 'NO')
       const filledQty = result.order?.filledQty ?? 0
 
       if (orderType === 'market') {
         if (filledQty > 0) {
-          const msg = `Filled ${filledQty} ${outcomeName} shares`
+          const msg = `Filled ${filledQty} ${outcomeLabel} shares`
           setSuccess(msg)
           showToast('success', msg)
         } else {
@@ -166,15 +174,15 @@ export default function OrderEntry({
         }
       } else {
         if (filledQty === quantity) {
-          const msg = `Filled ${quantity} ${outcomeName} at ${price}¢`
+          const msg = `Filled ${quantity} ${outcomeLabel} at ${price}¢`
           setSuccess(msg)
           showToast('success', msg)
         } else if (filledQty > 0) {
-          const msg = `Partial fill: ${filledQty}/${quantity} ${outcomeName} at ${price}¢`
+          const msg = `Partial fill: ${filledQty}/${quantity} ${outcomeLabel} at ${price}¢`
           setSuccess(msg)
           showToast('success', msg)
         } else {
-          const msg = `Order placed: ${quantity} ${outcomeName} at ${price}¢`
+          const msg = `Order resting: ${quantity} ${outcomeLabel} at ${price}¢`
           setSuccess(msg)
           showToast('success', msg)
         }
@@ -427,6 +435,65 @@ export default function OrderEntry({
       <p className="text-xs text-slate-400 text-center mt-4">
         Settlement in USDC on Stellar
       </p>
+
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 animate-in">
+            <h3 className="text-lg font-bold text-white mb-4 text-center">Confirm Your Order</h3>
+
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between items-center py-2 border-b border-slate-700">
+                <span className="text-sm text-slate-400">Side</span>
+                <span className={`text-sm font-bold ${selectedOutcome === 'yes' ? 'text-green-400' : 'text-red-400'}`}>
+                  Buy {selectedOutcome === 'yes' ? 'Yes' : 'No'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-700">
+                <span className="text-sm text-slate-400">Outcome</span>
+                <span className="text-sm font-semibold text-white">{outcomeName}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-700">
+                <span className="text-sm text-slate-400">Type</span>
+                <span className="text-sm text-white capitalize">{orderType}</span>
+              </div>
+              {orderType === 'limit' && (
+                <div className="flex justify-between items-center py-2 border-b border-slate-700">
+                  <span className="text-sm text-slate-400">Price</span>
+                  <span className="text-sm font-semibold text-white">{selectedOutcome === 'yes' ? price : 100 - price}¢</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center py-2 border-b border-slate-700">
+                <span className="text-sm text-slate-400">Shares</span>
+                <span className="text-sm font-semibold text-white">{quantity}</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-sm text-slate-400">Total Cost</span>
+                <span className="text-lg font-bold text-white">${estimatedCost.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 py-2.5 rounded-lg font-semibold text-sm bg-slate-700 border border-slate-600 text-slate-300 hover:bg-slate-600 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmedSubmit}
+                className={`flex-1 py-2.5 rounded-lg font-bold text-sm text-white transition ${
+                  selectedOutcome === 'yes'
+                    ? 'bg-green-600 hover:bg-green-500'
+                    : 'bg-red-600 hover:bg-red-500'
+                }`}
+              >
+                Confirm Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

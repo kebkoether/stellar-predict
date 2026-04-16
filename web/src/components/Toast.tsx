@@ -36,8 +36,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      {/* Toast container — fixed bottom-right */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none">
+      {/* Toast container — fixed top-center for high visibility */}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-3 pointer-events-none">
         {toasts.map(toast => (
           <ToastItem
             key={toast.id}
@@ -55,14 +55,12 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
   const [exiting, setExiting] = useState(false)
 
   useEffect(() => {
-    // Animate in
     requestAnimationFrame(() => setVisible(true))
 
-    // Auto-dismiss after 4s
     const timer = setTimeout(() => {
       setExiting(true)
-      setTimeout(onDismiss, 300)
-    }, 4000)
+      setTimeout(onDismiss, 400)
+    }, 5000)
 
     return () => clearTimeout(timer)
   }, [onDismiss])
@@ -71,30 +69,41 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
 
   return (
     <div
-      className={`pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl border backdrop-blur-sm transition-all duration-300 min-w-[300px] max-w-[420px] ${
+      className={`pointer-events-auto flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md transition-all duration-400 min-w-[360px] max-w-[500px] ${
         isSuccess
-          ? 'bg-green-950/90 border-green-700/60 text-green-100'
-          : 'bg-red-950/90 border-red-700/60 text-red-100'
+          ? 'bg-green-950/95 border-green-500/50 text-green-50'
+          : 'bg-red-950/95 border-red-500/50 text-red-50'
       } ${
         visible && !exiting
-          ? 'translate-x-0 opacity-100'
-          : 'translate-x-8 opacity-0'
+          ? 'translate-y-0 opacity-100 scale-100'
+          : '-translate-y-4 opacity-0 scale-95'
       }`}
+      style={{ boxShadow: isSuccess
+        ? '0 8px 32px rgba(34, 197, 94, 0.25), 0 0 0 1px rgba(34, 197, 94, 0.1)'
+        : '0 8px 32px rgba(239, 68, 68, 0.25), 0 0 0 1px rgba(239, 68, 68, 0.1)'
+      }}
     >
-      {isSuccess ? (
-        <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-      ) : (
-        <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-      )}
-      <p className="text-sm font-medium flex-1">{toast.message}</p>
+      <div className={`flex-shrink-0 p-1.5 rounded-full ${isSuccess ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+        {isSuccess ? (
+          <CheckCircle className="w-6 h-6 text-green-400" />
+        ) : (
+          <XCircle className="w-6 h-6 text-red-400" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${isSuccess ? 'text-green-400' : 'text-red-400'}`}>
+          {isSuccess ? 'Order Confirmed' : 'Order Failed'}
+        </p>
+        <p className="text-sm font-medium">{toast.message}</p>
+      </div>
       <button
         onClick={() => {
           setExiting(true)
-          setTimeout(onDismiss, 300)
+          setTimeout(onDismiss, 400)
         }}
-        className="flex-shrink-0 p-1 rounded hover:bg-white/10 transition"
+        className="flex-shrink-0 p-1.5 rounded-lg hover:bg-white/10 transition"
       >
-        <X className="w-3.5 h-3.5 opacity-60" />
+        <X className="w-4 h-4 opacity-60" />
       </button>
     </div>
   )
