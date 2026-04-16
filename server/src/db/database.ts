@@ -222,6 +222,17 @@ export class DatabaseClient {
         retry_count INTEGER NOT NULL DEFAULT 0
       )
     `);
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS contact_messages (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        message TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    `);
   }
 
   // Helper to get a single row
@@ -256,8 +267,8 @@ export class DatabaseClient {
     return results;
   }
 
-  // Helper to run a statement
-  private run(sql: string, params: any[] = []): void {
+  // Run a SQL statement (public for ad-hoc queries like contact form)
+  run(sql: string, params: any[] = []): void {
     this.db.run(sql, params);
   }
 

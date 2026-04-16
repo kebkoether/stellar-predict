@@ -33,33 +33,28 @@ export default function RootLayout({
                 <div>
                   <h4 className="font-semibold text-white mb-4">About</h4>
                   <ul className="space-y-2 text-slate-400 text-sm">
-                    <li><a href="#" className="hover:text-white transition">About Us</a></li>
-                    <li><a href="#" className="hover:text-white transition">Blog</a></li>
-                    <li><a href="#" className="hover:text-white transition">Careers</a></li>
+                    <li><a href="/about" className="hover:text-white transition">About Us</a></li>
+                    <li><a href="/contact" className="hover:text-white transition">Contact</a></li>
                   </ul>
                 </div>
                 <div>
                   <h4 className="font-semibold text-white mb-4">Developers</h4>
                   <ul className="space-y-2 text-slate-400 text-sm">
-                    <li><a href="#" className="hover:text-white transition">Documentation</a></li>
-                    <li><a href="#" className="hover:text-white transition">API</a></li>
-                    <li><a href="#" className="hover:text-white transition">GitHub</a></li>
+                    <li><a href="/docs" className="hover:text-white transition">API Documentation</a></li>
                   </ul>
                 </div>
                 <div>
                   <h4 className="font-semibold text-white mb-4">Legal</h4>
                   <ul className="space-y-2 text-slate-400 text-sm">
-                    <li><a href="#" className="hover:text-white transition">Terms of Service</a></li>
-                    <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
-                    <li><a href="#" className="hover:text-white transition">Disclaimer</a></li>
+                    <li><a href="/terms" className="hover:text-white transition">Terms of Service</a></li>
+                    <li><a href="/privacy" className="hover:text-white transition">Privacy Policy</a></li>
+                    <li><a href="/disclaimer" className="hover:text-white transition">Disclaimer</a></li>
                   </ul>
                 </div>
                 <div>
                   <h4 className="font-semibold text-white mb-4">Connect</h4>
                   <ul className="space-y-2 text-slate-400 text-sm">
-                    <li><a href="#" className="hover:text-white transition">Twitter</a></li>
-                    <li><a href="#" className="hover:text-white transition">Discord</a></li>
-                    <li><a href="#" className="hover:text-white transition">Email</a></li>
+                    <li><a href="mailto:klint@stellar.org" className="hover:text-white transition">Email</a></li>
                   </ul>
                 </div>
               </div>

@@ -721,6 +721,35 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
     res.json({ status: 'ok', timestamp: new Date() });
   });
 
+  /**
+   * CONTACT FORM — stores submissions in the DB contact_messages table
+   */
+  const ContactSchema = z.object({
+    name: z.string().min(1).max(200),
+    email: z.string().email().max(200),
+    subject: z.string().min(1).max(200),
+    message: z.string().min(1).max(5000),
+  });
+
+  router.post('/api/contact', (req: Request, res: Response) => {
+    try {
+      const data = ContactSchema.parse(req.body);
+      db.run(
+        `INSERT INTO contact_messages (id, name, email, subject, message, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [uuidv4(), data.name, data.email, data.subject, data.message, new Date().toISOString()]
+      );
+      console.log(`📬 Contact form: "${data.subject}" from ${data.email}`);
+      res.status(201).json({ message: 'Message received. We will get back to you soon.' });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation error', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to send message' });
+      }
+    }
+  });
+
   // Admin: set user balance (for corrections only)
   router.post('/api/admin/users/:userId/set-balance', (req: Request, res: Response) => {
     try {
