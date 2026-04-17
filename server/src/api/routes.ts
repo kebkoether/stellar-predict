@@ -178,7 +178,7 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
       const markets = db.getAllMarkets();
 
       // Step 1: Get price for each market.
-      // Priority: orderbook mid > oracle reference price > null
+      // Priority: orderbook mid > last trade price > oracle reference price > null
       const rawPrices = new Map<string, number | null>();
       for (const m of markets) {
         const book = matching.getOrderBook(m.id, 0);
@@ -192,7 +192,14 @@ export function createRouter(db: Database, matching: MatchingEngine, settler?: a
         } else if (bestAsk !== null) {
           yesPrice = bestAsk;
         }
-        // Fall back to oracle reference price when no orderbook exists
+        // Fall back to last trade price when orderbook is empty
+        if (yesPrice === null) {
+          const recentTrades = db.getMarketTrades(m.id, 1);
+          if (recentTrades.length > 0) {
+            yesPrice = recentTrades[0].price;
+          }
+        }
+        // Fall back to oracle reference price when no trades exist
         if (yesPrice === null && m.oraclePrice !== undefined) {
           yesPrice = m.oraclePrice;
         }

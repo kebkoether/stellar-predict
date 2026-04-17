@@ -37,7 +37,8 @@ export default function OrderEntry({
   const [selectedOutcome, setSelectedOutcome] = useState<'yes' | 'no'>(initialAction === 'sell' ? 'no' : 'yes')
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
   const [price, setPrice] = useState(50)
-  const [quantity, setQuantity] = useState(10)
+  const [quantityStr, setQuantityStr] = useState('10')
+  const quantity = Number(quantityStr) || 0
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -188,7 +189,7 @@ export default function OrderEntry({
         }
       }
 
-      setQuantity(10)
+      setQuantityStr('10')
       await refreshBalance()
       if (onOrderPlaced) setTimeout(onOrderPlaced, 500)
     } catch (err) {
@@ -364,8 +365,8 @@ export default function OrderEntry({
           type="number"
           min="1"
           step="1"
-          value={quantity}
-          onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+          value={quantityStr}
+          onChange={(e) => setQuantityStr(e.target.value.replace(/[^0-9]/g, ''))}
           className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-600"
           placeholder="10"
         />
@@ -411,7 +412,7 @@ export default function OrderEntry({
         <form onSubmit={handleSubmit}>
           <button
             type="submit"
-            disabled={loading || !balance || balance.available < estimatedCost}
+            disabled={loading || !balance || balance.available < estimatedCost || quantity < 1}
             className={`w-full py-3 px-4 rounded-lg text-lg font-bold transition flex items-center justify-center gap-2 ${
               selectedOutcome === 'yes'
                 ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 disabled:opacity-50 disabled:cursor-not-allowed'
