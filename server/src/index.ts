@@ -110,28 +110,63 @@ const DEFAULT_MARKETS: Array<{
   { question: 'Will the Fed hold or raise rates in 2026?', description: 'Resolves YES if the Federal Reserve does not cut rates at all during 2026.', resolutionTime: '2026-12-31T00:00:00Z', category: 'Economy', eventId: 'fed-cuts-2026', eventTitle: '2026 Fed Rate Cuts' },
 ];
 
-// SEED_VERSION: bump this to force a re-seed even if markets exist
+// SEED_VERSION: bump this number to force a FULL re-seed (deletes all markets,
+// orders, positions, and trades — but preserves user balances).
+// Normal deploys (same version) only add missing markets and never touch user data.
 const SEED_VERSION = 5;
 
 async function seedMarkets(db: Database, force = false): Promise<void> {
   const existing = db.getAllMarkets();
-
-  // Check stored seed version — if it matches, skip even on restart
   const storedVersion = db.getMeta('seed_version');
-  if (!force && storedVersion === String(SEED_VERSION) && existing.length > 0) {
-    console.log(`Database has ${existing.length} markets at seed v${SEED_VERSION} — skipping`);
+  const versionMatch = storedVersion === String(SEED_VERSION);
+
+  // ── Full re-seed: only when version is explicitly bumped or forced ──
+  if (force || (!versionMatch && storedVersion !== null)) {
+    console.log(`🔄 Full re-seed: v${storedVersion || '?'} → v${SEED_VERSION}`);
+    console.log(`   Deleting ${existing.length} markets + orders/trades/positions...`);
+    console.log(`   ⚠️  User balances are PRESERVED.`);
+    db.deleteAllMarkets();
+    // Also clean up orphaned orders, trades, positions tied to old markets
+    db.run('DELETE FROM orders');
+    db.run('DELETE FROM trades');
+    db.run('DELETE FROM positions');
+    db.run('DELETE FROM creation_bonds');
+
+    // Insert all markets fresh
+    let count = 0;
+    for (const m of DEFAULT_MARKETS) {
+      db.createMarket({
+        id: uuidv4(),
+        question: m.question,
+        description: m.description,
+        outcomes: ['Yes', 'No'],
+        status: 'open',
+        collateralToken: {
+          code: config.usdc.code,
+          issuer: config.usdc.issuer,
+        },
+        createdAt: new Date(),
+        resolutionTime: new Date(m.resolutionTime),
+        createdBy: 'admin',
+        category: m.category,
+        eventId: m.eventId,
+        eventTitle: m.eventTitle,
+      });
+      count++;
+    }
+    db.setMeta('seed_version', String(SEED_VERSION));
+    console.log(`✅ Full re-seed complete: ${count} markets created (v${SEED_VERSION})`);
     return;
   }
 
-  // Version mismatch or no markets → reseed
-  const needsReseed = !force && storedVersion !== String(SEED_VERSION) && existing.length > 0;
-  if (needsReseed || (force && existing.length > 0)) {
-    console.log(`Re-seeding: v${storedVersion || '?'} → v${SEED_VERSION} (deleting ${existing.length} old markets, preserving balances)...`);
-    db.deleteAllMarkets();
-  }
+  // ── Additive seed: same version — only insert markets that don't exist yet ──
+  // Match by question text to avoid duplicates
+  const existingQuestions = new Set(existing.map(m => m.question));
+  let added = 0;
 
-  console.log(`Seeding ${DEFAULT_MARKETS.length} markets (v${SEED_VERSION})...`);
   for (const m of DEFAULT_MARKETS) {
+    if (existingQuestions.has(m.question)) continue;
+
     db.createMarket({
       id: uuidv4(),
       question: m.question,
@@ -149,9 +184,19 @@ async function seedMarkets(db: Database, force = false): Promise<void> {
       eventId: m.eventId,
       eventTitle: m.eventTitle,
     });
+    added++;
   }
-  db.setMeta('seed_version', String(SEED_VERSION));
-  console.log(`Seeded ${DEFAULT_MARKETS.length} markets (v${SEED_VERSION})`);
+
+  // Set version if this is a fresh DB (no stored version yet)
+  if (!storedVersion) {
+    db.setMeta('seed_version', String(SEED_VERSION));
+  }
+
+  if (added > 0) {
+    console.log(`➕ Added ${added} new markets (${existing.length} already existed, v${SEED_VERSION})`);
+  } else {
+    console.log(`Database has ${existing.length} markets at v${SEED_VERSION} — nothing to add`);
+  }
 }
 
 let app: Express;
