@@ -86,12 +86,14 @@ export default function OrderEntry({
     return () => clearInterval(interval)
   }, [marketId])
 
-  // For market orders, cost is based on best available price
-  // For limit orders, cost is based on the chosen price
+  // Cost per share = what you actually pay to hold this position.
+  // Buy YES at P → you pay P (profit = 1-P if YES wins)
+  // Buy NO  at P → you pay (1-P) i.e. the NO price (profit = P if NO wins)
+  // When orderbook is empty, fall back to the price slider (which is always the YES price).
   const effectivePrice = orderType === 'market'
     ? (selectedOutcome === 'yes'
         ? (bestAsk !== null ? Math.round(bestAsk * 100) : price)
-        : (bestBid !== null ? Math.round((1 - bestBid) * 100) : price))
+        : (bestBid !== null ? Math.round((1 - bestBid) * 100) : (100 - price)))
     : (selectedOutcome === 'yes' ? price : 100 - price)
 
   const costPerShare = effectivePrice / 100
