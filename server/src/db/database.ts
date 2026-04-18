@@ -29,9 +29,12 @@ export class DatabaseClient {
     }
 
     if (fs.existsSync(this.dbPath)) {
+      const stats = fs.statSync(this.dbPath);
+      console.log(`📂 Found existing DB: ${this.dbPath} (${(stats.size / 1024).toFixed(1)} KB, modified ${stats.mtime.toISOString()})`);
       const buffer = fs.readFileSync(this.dbPath);
       this.db = new SQL.Database(buffer);
     } else {
+      console.log(`📂 No DB found at ${this.dbPath} — creating fresh database`);
       this.db = new SQL.Database();
     }
 
@@ -270,6 +273,18 @@ export class DatabaseClient {
   // Run a SQL statement (public for ad-hoc queries like contact form)
   run(sql: string, params: any[] = []): void {
     this.db.run(sql, params);
+    // Save immediately after writes to avoid data loss on container shutdown
+    this.debouncedSave();
+  }
+
+  // Debounced save: avoids hammering disk on rapid successive writes
+  private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private debouncedSave(): void {
+    if (this.saveTimer) return; // already scheduled
+    this.saveTimer = setTimeout(() => {
+      this.saveToDisk();
+      this.saveTimer = null;
+    }, 500);
   }
 
   /**
