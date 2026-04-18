@@ -138,8 +138,11 @@ export default function OrderEntry({
         }
         apiType = 'ioc'
       } else {
+        // Both sides send the YES price to the API — the engine handles cost inversion.
+        // Buy YES at P → engine charges P per share
+        // Sell YES at P → engine charges (1-P) per share (= the NO cost)
         apiSide = selectedOutcome === 'yes' ? 'buy' : 'sell'
-        apiPrice = selectedOutcome === 'yes' ? price / 100 : (100 - price) / 100
+        apiPrice = price / 100
         apiType = 'limit'
       }
 
